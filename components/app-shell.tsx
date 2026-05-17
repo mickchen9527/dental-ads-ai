@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NAV_GROUPS, NAV_ITEMS } from "@/lib/navigation";
+import { LogoutButton } from "./logout-button";
 
 type AppShellProps = {
   activeHref: string;
@@ -64,11 +65,17 @@ export function AppShell({ activeHref, children }: AppShellProps) {
         <div className="m-5 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
           红点只是重点关注提醒，不代表一定存在重大问题。AI建议仅供内部参考，广告预算、价格和医疗广告内容必须人工确认。
         </div>
+        <div className="border-t border-slate-200 p-5">
+          <LogoutButton />
+        </div>
       </aside>
 
       <div className="lg:pl-72">
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
-          <p className="text-sm font-semibold">口腔投放决策辅助系统</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold">口腔投放决策辅助系统</p>
+            <LogoutButton />
+          </div>
           <nav className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {NAV_ITEMS.map((item) => (
               <Link

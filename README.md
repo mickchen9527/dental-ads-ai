@@ -2,6 +2,28 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+## Admin Login
+
+V1.3 adds administrator-only access protection. The system does not provide
+public registration or a multi-user account system.
+
+Create `.env.local` for local development:
+
+```bash
+ADMIN_PASSWORD=你的管理员密码
+```
+
+When deploying to Vercel, add the same environment variable in the Vercel
+project settings:
+
+```bash
+ADMIN_PASSWORD=你的管理员密码
+```
+
+Do not commit `.env.local` or real passwords to Git. The login session uses an
+httpOnly cookie named `dental_ads_auth`; in production the cookie is marked
+`secure`.
+
 First, run the development server:
 
 ```bash
