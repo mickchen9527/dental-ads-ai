@@ -38,7 +38,7 @@ export default function ReportsPage() {
             <div className="flex items-center justify-between gap-4">
               <dt className="text-slate-500">当前已支持数据源</dt>
               <dd className="font-semibold text-slate-950">
-                美团、e看牙、项目价格/成本表
+                美团、e看牙、项目价格管理
               </dd>
             </div>
             <div className="flex items-center justify-between gap-4">

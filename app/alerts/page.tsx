@@ -10,7 +10,7 @@ export default function AlertsPage() {
       <PageHeader
         eyebrow="每日操作"
         title="异常预警"
-        description="展示当前经营数据中的异常信号。预警只提示风险，不自动执行预算、价格或广告操作。"
+        description="展示当前经营数据中的异常信号。预警只提示风险，不会替你改预算、价格或广告。"
       />
 
       <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">

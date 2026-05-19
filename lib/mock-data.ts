@@ -136,7 +136,7 @@ export type Recommendation = {
 };
 
 const recommendationTypes = [
-  "建议加预算",
+  "建议人工复核后小幅测试",
   "建议降预算",
   "建议暂停",
   "建议保持观察",
@@ -173,7 +173,7 @@ const recommendationTypes = [
   "建议补充竞品情报后再判断",
   "建议拆解竞品活动条件",
   "建议先补充 e看牙回流数据",
-  "建议先补齐项目成本表",
+  "建议先补齐项目价格管理",
   "建议先统一项目映射",
   "建议暂缓重大调整",
 ];
@@ -189,19 +189,19 @@ function buildRecommendation(type: string, index: number): Recommendation {
     id: `rec-${index + 1}`,
     type,
     action: `${type}：${project}项目先做人工复核后执行`,
-    platform: isDataQuality ? "美团 + e看牙 + 项目价格/成本表" : "美团",
+    platform: isDataQuality ? "美团 + e看牙 + 项目价格管理" : "美团",
     project,
     dataCycle: isHighTicket ? "近7-30天" : "近1-7天",
     sampleSize: isHighTicket ? "样本量偏小，需继续观察成交回流" : "示例样本：咨询80-300条",
     evidence: isDataQuality
       ? "数据质量评分、平台线索回流率和成交金额完整率提示需要先补数据。"
-      : "结合消耗、有效咨询率、到院率、成交成本和毛利ROI进行规则判断。",
+      : "结合消耗、有效咨询率、到院率、成交成本和实收 ROI 进行规则判断。",
     reason: isHighTicket
       ? "高客单项目决策周期长，不能只看单日表现。"
       : "当前指标变化已经指向可执行的优化方向。",
     risk: isDataQuality
       ? "数据不完整时，不建议做重大预算或价格调整。"
-      : "所有建议必须人工确认，不能自动执行广告后台操作。",
+      : "所有建议必须人工确认，系统不会替你操作广告后台。",
     observationCycle: isHighTicket ? "7-30天" : "1-7天",
     confidence,
     completeRevenueReturn: "否",

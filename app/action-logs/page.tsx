@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { PageHelpButton } from "@/components/page-help-button";
 import { actionLogRows } from "@/lib/v12-static-data";
 
 const headers = [
@@ -19,17 +23,46 @@ const headers = [
 ];
 
 export default function ActionLogsPage() {
+  const [filter, setFilter] = useState("全部");
+  const filteredRows = actionLogRows.filter((row) => {
+    if (filter === "全部") return true;
+    if (filter === "已执行") return row[6] === "已执行";
+    if (filter === "未执行") return row[6] === "未执行";
+    if (filter === "待复盘") return row[11] === "待复盘";
+    if (filter === "有效") return row[11] === "有效";
+    if (filter === "无效") return row[11] === "无效";
+    return true;
+  });
+
   return (
     <AppShell activeHref="/action-logs">
       <PageHeader
         eyebrow="执行闭环"
         title="操作记录"
         description="系统建议必须经过人工确认。执行后需要记录结果，否则无法判断建议是否有效。"
+        action={
+          <PageHelpButton
+            purpose="记录建议到底有没有执行，执行后有没有变好。"
+            when="每次改预算、改页面、改话术、改素材后都要记。"
+            focus={["是否执行", "执行动作", "3天结果", "7天结果", "是否有效"]}
+            next="满3天和7天回来复盘，把有效和无效标清楚。"
+            mistakes={["不要只执行不记录。", "不要当天就判断高客单项目有效或无效。"]}
+          />
+        }
       />
 
       <section className="mb-6 flex flex-wrap gap-2">
         {["全部", "已执行", "未执行", "待复盘", "有效", "无效"].map((item) => (
-          <button key={item} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+          <button
+            key={item}
+            className={`rounded-md border px-3 py-2 text-sm font-semibold ${
+              filter === item
+                ? "border-cyan-200 bg-cyan-50 text-cyan-800"
+                : "border-slate-200 bg-white text-slate-700"
+            }`}
+            type="button"
+            onClick={() => setFilter(item)}
+          >
             {item}
           </button>
         ))}
@@ -45,7 +78,7 @@ export default function ActionLogsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {actionLogRows.map((row) => (
+            {filteredRows.map((row) => (
               <tr key={row.join("-")}>
                 {row.map((cell, index) => (
                   <td key={`${cell}-${index}`} className="px-4 py-3 text-slate-700">{cell}</td>
@@ -56,9 +89,15 @@ export default function ActionLogsPage() {
         </table>
       </section>
 
+      {filteredRows.length === 0 ? (
+        <section className="mt-4 rounded-md border border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
+          当前筛选下没有记录。执行动作后记一条，后续复盘才有依据。
+        </section>
+      ) : null}
+
       <section className="mt-6 grid gap-4 md:grid-cols-3">
         <Info title="3天复盘" text="已执行满3天，先看短期咨询、有效咨询和到院变化。" />
-        <Info title="7天复盘" text="已执行满7天，再看成交成本、ROI和毛利ROI趋势。" />
+        <Info title="7天复盘" text="已执行满7天，再看成交成本和实收 ROI 趋势。" />
         <Info title="高客单周期" text="种植、正畸等项目未满观察周期，不建议提前下结论。" />
       </section>
     </AppShell>

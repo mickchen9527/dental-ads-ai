@@ -35,6 +35,7 @@ export type DataSourceId =
   | "project-price-cost"
   | "douyin-feed"
   | "tencent-gdt"
+  | "amap"
   | "competitor-intelligence";
 
 export type DataSourceCategory = "ad" | "conversion" | "finance" | "market";
@@ -98,6 +99,7 @@ export const AD_SOURCE_IDS: DataSourceId[] = [
   "meituan",
   "douyin-feed",
   "tencent-gdt",
+  "amap",
 ];
 
 export const REQUIRED_OPERATION_SOURCE_IDS: DataSourceId[] = [

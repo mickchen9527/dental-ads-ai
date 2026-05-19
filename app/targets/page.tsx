@@ -10,8 +10,8 @@ const headers = [
   "目标到院率",
   "目标成交率",
   "目标成交成本",
-  "目标ROI",
-  "目标毛利ROI",
+  "目标实收 ROI",
+  "观察说明",
   "观察周期",
 ];
 
@@ -21,7 +21,7 @@ export default function TargetsPage() {
       <PageHeader
         eyebrow="基础设置"
         title="目标值设置"
-        description="展示各项目的目标成本、转化率、ROI和观察周期。第一版仅为静态目标值。"
+        description="展示各项目的目标成本、转化率、实收 ROI 和观察周期。第一版仅为静态目标值。"
       />
 
       <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">

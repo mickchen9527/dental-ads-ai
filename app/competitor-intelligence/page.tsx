@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { StorageNote } from "@/components/storage-note";
+import { UploadedDataManager } from "@/components/uploaded-data-manager";
 import { pendingIntegrationNote } from "@/lib/v12-static-data";
 
 const complianceText =
@@ -61,9 +63,26 @@ const competitors = [
   },
 ];
 
+const uploadedRows = [
+  ["competitor-price-202605.csv", "竞品价格表", "本月", "2026-05-18 17:20", "18", "解析成功", "仅作参考"],
+  ["competitor-screenshots.zip", "竞品页面截图", "本周", "2026-05-18 17:25", "12", "前端演示", "仅作参考"],
+  ["competitor-links.csv", "竞品公开页面链接记录", "本周", "2026-05-18 17:30", "9", "解析成功", "仅作参考"],
+  ["competitor-comments.csv", "竞品评论关键词表", "本周", "2026-05-18 17:35", "45", "需要人工复核", "仅作参考"],
+  ["competitor-campaigns.csv", "竞品活动表", "本周", "2026-05-18 17:40", "8", "解析成功", "仅作参考"],
+];
+
 export default function CompetitorIntelligencePage() {
   const [platform, setPlatform] = useState("全部");
   const filtered = competitors.filter((item) => platform === "全部" || item.platform === platform);
+  const reportCsv = [
+    ["统计周期", "2026-05-13 至 2026-05-19"],
+    ["报告类型", "竞品观察周报"],
+    ["说明", "竞品情报仅作参考，不直接参与调价，不直接决定预算"],
+    ["竞品名称", "平台", "项目", "展示价格", "可信度等级", "我方反打建议"],
+    ...competitors.map((item) => [item.name, item.platform, item.project, item.price, item.confidence, item.counter]),
+  ]
+    .map((row) => row.join(","))
+    .join("\n");
 
   return (
     <AppShell activeHref="/competitor-intelligence">
@@ -75,8 +94,13 @@ export default function CompetitorIntelligencePage() {
 
       <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
         <p>{complianceText}</p>
+        <p className="font-semibold">竞品情报仅作参考，不直接参与调价，不直接决定预算。</p>
         <p>{pendingIntegrationNote}</p>
       </section>
+
+      <div className="mt-6">
+        <StorageNote />
+      </div>
 
       <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
         <h3 className="text-base font-semibold text-slate-950">平台分类筛选</h3>
@@ -171,6 +195,32 @@ export default function CompetitorIntelligencePage() {
             </article>
           );
         })}
+      </section>
+
+      <UploadedDataManager
+        title="已上传数据"
+        description="这里管理竞品价格表、公开页面截图、公开页面链接记录、评论关键词表和活动表。竞品情报仅作参考，不直接参与调价，不直接决定预算。"
+        filters={["文件名", "数据类型", "日期范围", "平台", "项目"]}
+        rows={uploadedRows}
+      />
+
+      <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
+        <h3 className="text-base font-semibold text-slate-950">生成竞品观察周报</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          竞品情报仅作参考，如需投放复盘周报，请到「项目分析」生成。这里保留竞品观察示例下载，方便单独记录公开页面变化。
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-800" type="button">
+            生成竞品观察周报
+          </button>
+          <a
+            className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800"
+            href={`data:text/csv;charset=utf-8,${encodeURIComponent(reportCsv)}`}
+            download="competitor-weekly-report.csv"
+          >
+            下载竞品观察周报
+          </a>
+        </div>
       </section>
     </AppShell>
   );

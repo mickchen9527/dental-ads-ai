@@ -21,7 +21,7 @@ const headers = [
   "有效咨询率",
   "到院率",
   "成交成本",
-  "毛利ROI",
+  "实收 ROI",
   "系统评分",
   "建议动作",
 ];
@@ -39,7 +39,7 @@ export default function CreativeLibraryPage() {
       <PageHeader
         eyebrow="分析中心"
         title="素材库"
-        description="素材好不好不能只看播放量和点击率，要结合有效咨询率、到院率、成交成本和毛利ROI。"
+        description="素材好不好不能只看播放量和点击率，要结合有效咨询率、到院率、成交成本和实收 ROI。"
       />
 
       <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">

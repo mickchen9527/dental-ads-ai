@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { PageHelpButton } from "@/components/page-help-button";
 import { knowledgeArticles, knowledgeCategories } from "@/lib/knowledge/articles";
 
 const quickLinks = [
@@ -10,7 +11,7 @@ const quickLinks = [
   ["如何判断今天能不能调预算", "/knowledge/adjust-budget-checklist"],
   ["如何做一周复盘", "/knowledge/weekly-review"],
   ["为什么咨询成本低不一定好", "/knowledge/low-consult-cost-not-always-good"],
-  ["什么是毛利ROI", "/knowledge/gross-profit-roi"],
+  ["什么是实收 ROI", "/knowledge/gross-profit-roi"],
   ["什么是平台线索回流率", "/knowledge/platform-lead-return-rate"],
 ];
 
@@ -21,6 +22,15 @@ export default function KnowledgePage() {
         eyebrow="基础设置"
         title="投放知识库"
         description="把知识库做成新手也能跟着步骤走的投放操作手册。每张卡片和快速入口都可以进入详情页。"
+        action={
+          <PageHelpButton
+            purpose="遇到看不懂的指标和链路问题，就来这里查。"
+            when="不知道问题卡在哪一步、看不懂建议、培训新人时看。"
+            focus={["投放链路判断", "基础指标", "每日操作流程"]}
+            next="找到对应文章，按里面的如果/那么步骤检查数据。"
+            mistakes={["不要只背公式。", "不要只看点击、咨询或 ROI 一个数字。"]}
+          />
+        }
       />
 
       <section className="mb-6 rounded-md border border-cyan-100 bg-cyan-50 p-4">

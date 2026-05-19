@@ -19,7 +19,7 @@ export function DataSourceStrip({ presentSourceIds }: DataSourceStripProps) {
             全站统一数据源
           </h3>
           <p className="text-xs leading-5 text-slate-500">
-            当前 V1 优先跑通美团、e看牙、项目价格/成本表三张表的数据闭环。
+            当前 V1 优先跑通美团、e看牙、项目价格管理三类数据的闭环。
           </p>
         </div>
         <p className="text-xs font-medium text-slate-500">

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { PageHelpButton } from "@/components/page-help-button";
 import { pendingIntegrationNote } from "@/lib/v12-static-data";
 
 const templates = [
@@ -18,11 +19,11 @@ const templates = [
     fields: "日期、平台、推广名称、客户编号、手机号后四位、项目、线索等级、是否预约、是否到院、是否成交、成交项目、成交金额、未成交原因、接待人员、医生、备注",
   },
   {
-    name: "项目价格/成本表模板",
+    name: "项目价格管理模板",
     status: "已支持计算",
     href: "/templates/project-cost-template.csv",
-    purpose: "用于维护项目成交价、成本、目标成交成本和观察周期。",
-    fields: "项目名称、当前成交价、项目成本、目标毛利率、允许投放占毛利比例、目标成交成本、最低可接受价格、观察周期",
+    purpose: "用于维护 e看牙系统价、平台展示价、活动价和观察周期。",
+    fields: "项目名称、项目分类、e看牙系统价、平台展示价、活动价、实际常见成交价、套餐包含内容、是否引流项目、是否高客单项目、观察周期、价格备注、状态",
   },
   {
     name: "抖音信息流数据模板",
@@ -68,6 +69,15 @@ export default function TemplatesPage() {
         eyebrow="字段模板"
         title="模板中心"
         description="模板中心提供真实可下载的 CSV 表头文件。抖音、腾讯广点通入口已开放，V1.3 后纳入计算；竞品情报入口已开放，仅作参考分析。"
+        action={
+          <PageHelpButton
+            purpose="下载表头模板，按模板整理数据再上传。"
+            when="第一次整理数据、字段不统一、上传报错时看。"
+            focus={["模板用途", "表头字段", "下载按钮"]}
+            next="下载模板后，把平台导出的字段整理成模板格式。"
+            mistakes={["不要随便改表头。", "不要把项目价格管理当成本表。"]}
+          />
+        }
       />
 
       <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">

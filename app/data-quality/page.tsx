@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
+import { PageHelpButton } from "@/components/page-help-button";
 import { pendingScoringNotice } from "@/lib/config/dataSources";
 import { buildAnomalyRows, buildFieldMissingRows, buildMatchSummary, buildUploadDetectionRows } from "@/lib/quality/details";
 import { qualityResult } from "@/lib/mock-data";
@@ -19,6 +20,15 @@ export default function DataQualityPage() {
         eyebrow="AI建议前置校验"
         title="数据质量检测"
         description="数据质量会直接影响AI建议准确性。若数据匹配率低、成交数据缺失或观察周期不足，系统建议只能作为低置信参考。"
+        action={
+          <PageHelpButton
+            purpose="检查上传的数据能不能用，避免拿错数据做决定。"
+            when="每次上传数据后、看建议前都要看。"
+            focus={["字段完整率", "e看牙记录匹配率", "平台线索回流率", "实收金额完整率"]}
+            next="数据不完整时先补数据，不要急着调预算或调价格。"
+            mistakes={["不要只看一个匹配率。", "不要没有实收金额就判断 ROI。"]}
+          />
+        }
       />
 
       <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">

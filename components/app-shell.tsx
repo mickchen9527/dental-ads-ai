@@ -8,14 +8,15 @@ type AppShellProps = {
 };
 
 const attentionHrefs = new Set([
-  "/tasks",
-  "/alerts",
   "/data-quality",
   "/action-logs",
   "/recommendations",
-  "/diagnosis",
-  "/review",
-  "/ai-insights",
+  "/platforms/meituan",
+  "/platforms/douyin",
+  "/platforms/gdt",
+  "/platforms/amap",
+  "/ekanya-analysis",
+  "/roi-analysis",
 ]);
 
 export function AppShell({ activeHref, children }: AppShellProps) {

@@ -4,6 +4,7 @@ export type DataSourceKey =
   | "project_cost"
   | "douyin"
   | "gdt"
+  | "amap"
   | "competitor";
 
 export type DataSourceStatus =
@@ -113,8 +114,8 @@ export const dataSources: DataSourceConfig[] = [
   {
     key: "project_cost",
     legacyId: "project-price-cost",
-    name: "项目价格/成本表",
-    shortName: "项目价格/成本表",
+    name: "项目价格管理",
+    shortName: "项目价格管理",
     status: "已支持计算",
     statusLabel: "已支持计算",
     participationLabel: "参与评分 / 参与计算",
@@ -122,21 +123,21 @@ export const dataSources: DataSourceConfig[] = [
     participatesInScoring: true,
     participatesInCalculation: true,
     supportedFormats: ["CSV", "XLSX"],
-    description: "用于上传项目成交价、项目成本、目标成交成本、毛利率、观察周期等数据。",
+    description: "用于维护 e看牙系统价、平台展示价、活动价、实际常见成交价和观察周期等数据。",
     explanation: supportedExplanation,
     requiredFields: [
       "项目名称",
-      "当前成交价",
-      "项目成本",
-      "目标毛利率",
-      "允许投放占毛利比例",
-      "目标成交成本",
-      "最低可接受价格",
+      "项目分类",
+      "e看牙系统价",
+      "平台展示价",
+      "活动价",
+      "实际常见成交价",
+      "套餐包含内容",
       "观察周期",
     ],
     recommendedFields: [],
     fieldMappingStatus: "已配置，参与计算",
-    calculationNote: "参与毛利 ROI、目标成交成本和可承受获客成本判断。",
+    calculationNote: "参与项目价格口径、目标成交成本和实收 ROI 判断；未配置真实项目成本时不计算毛利 ROI。",
   },
   {
     key: "douyin",
@@ -177,6 +178,25 @@ export const dataSources: DataSourceConfig[] = [
     calculationNote: "当前 V1.2 暂不参与数据质量评分和建议卡计算，V1.3 后再纳入计算。",
   },
   {
+    key: "amap",
+    legacyId: "amap",
+    name: "高德数据",
+    shortName: "高德",
+    status: "入口已开放，暂不参与计算",
+    statusLabel: "入口已开放，暂不参与计算",
+    participationLabel: "暂不参与评分 / 暂不参与计算",
+    category: "广告平台",
+    participatesInScoring: false,
+    participatesInCalculation: false,
+    supportedFormats: ["CSV", "XLSX"],
+    description: "用于预留高德推广汇总、电话、导航、地址查看、门店访问和路线规划等字段。",
+    explanation: "当前可上传文件并查看字段预览，但暂不纳入数据质量评分和建议卡计算。后续配置字段映射后再参与计算。",
+    requiredFields: [],
+    recommendedFields: ["高德推广汇总数据", "高德电话/导航/门店访问数据", "高德线索数据，如果能导出", "e看牙高德后端回流数据", "日期", "花费", "曝光", "点击", "电话", "导航", "地址查看", "门店访问", "路线规划", "到店意向"],
+    fieldMappingStatus: "入口已开放，字段映射待配置",
+    calculationNote: "当前暂不参与数据质量评分和建议卡计算，后续再纳入计算。",
+  },
+  {
     key: "competitor",
     legacyId: "competitor-intelligence",
     name: "竞品情报表",
@@ -207,7 +227,7 @@ export const supportedDataSourceText = supportedDataSources.map((source) => sour
 export const pendingDataSourceText = openDataSources.map((source) => source.shortName).join("、");
 export const openButNotCalculatedDataSourceText = openDataSources.map((source) => source.shortName).join("、");
 export const pendingScoringNotice =
-  "当前数据质量评分仍主要基于美团推广数据、e看牙承接/成交数据、项目价格/成本表。抖音、腾讯广点通、竞品情报已开放入口，但暂未纳入核心评分。";
+  "当前数据质量评分仍主要基于美团推广数据、e看牙承接/成交数据、项目价格管理。抖音、腾讯广点通、竞品情报已开放入口，但暂未纳入核心评分。";
 
 export function getDataSourceByKey(key: DataSourceKey) {
   return dataSources.find((source) => source.key === key);

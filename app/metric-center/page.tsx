@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { PageHelpButton } from "@/components/page-help-button";
 import { metricGroups } from "@/lib/v12-static-data";
 
 export default function MetricCenterPage() {
@@ -8,7 +9,16 @@ export default function MetricCenterPage() {
       <PageHeader
         eyebrow="基础设置"
         title="指标公式中心"
-        description="统一展示投放、咨询、承接、成本ROI、数据质量和素材指标的公式、解释、判断标准和建议动作。"
+        description="统一展示投放、咨询、承接、实收 ROI、数据质量和素材指标的公式、解释、判断标准和建议动作。"
+        action={
+          <PageHelpButton
+            purpose="把系统里常见公式翻译成大白话。"
+            when="看不懂指标、需要给同事解释口径时看。"
+            focus={["CTR", "CPC", "到院率", "成交率", "实收 ROI"]}
+            next="看完公式后回到对应页面检查问题卡在哪一步。"
+            mistakes={["不要只看一个指标。", "不要把实收 ROI 当利润。"]}
+          />
+        }
       />
 
       <div className="space-y-6">

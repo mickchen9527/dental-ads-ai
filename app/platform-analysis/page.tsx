@@ -15,10 +15,11 @@ const platformStatus = [
   ["美团", "已支持，参与当前计算。", "emerald"],
   ["抖音信息流", "入口已开放，当前为示例/预留数据，暂不参与真实计算。", "amber"],
   ["腾讯广点通", "入口已开放，当前为示例/预留数据，暂不参与真实计算。", "amber"],
+  ["高德", "入口已开放，当前为示例/预留数据，暂不参与真实计算。", "amber"],
   ["大众点评", "市场与竞品公开页面参考，不参与当前计算。", "slate"],
   ["小红书", "内容参考平台，当前不参与计算。", "slate"],
   ["e看牙", "后端承接/成交数据源，用于转化归因。", "cyan"],
-  ["竞品情报", "市场参考数据，不参与当前平台 ROI 计算。", "slate"],
+  ["竞品情报", "市场参考数据，不参与当前平台实收 ROI 计算。", "slate"],
 ] as const;
 
 export default function PlatformAnalysisPage() {
@@ -29,7 +30,7 @@ export default function PlatformAnalysisPage() {
       <PageHeader
         eyebrow="平台接入口径"
         title="平台分析"
-        description="当前 V1 只将美团纳入广告平台计算；其他平台展示接入状态，避免误认为已经参与真实 ROI 计算。"
+        description="当前 V1 只将美团纳入广告平台计算；其他平台展示接入状态，避免误认为已经参与真实实收 ROI 计算。"
       />
 
       <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">

@@ -27,8 +27,8 @@ export function PlatformPerformanceTable({ rows }: PlatformPerformanceTableProps
             <th className="px-4 py-3">预约率</th>
             <th className="px-4 py-3">到院率</th>
             <th className="px-4 py-3">成交成本</th>
-            <th className="px-4 py-3">ROI</th>
-            <th className="px-4 py-3">毛利ROI</th>
+            <th className="px-4 py-3">实收 ROI</th>
+            <th className="px-4 py-3">说明</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -53,7 +53,7 @@ export function PlatformPerformanceTable({ rows }: PlatformPerformanceTableProps
               </td>
               <td className="px-4 py-3">{formatMultiplier(metrics.roi)}</td>
               <td className="px-4 py-3">
-                {formatMultiplier(metrics.grossProfitRoi)}
+                未配置真实项目成本，暂不计算毛利
               </td>
             </tr>
           ))}
