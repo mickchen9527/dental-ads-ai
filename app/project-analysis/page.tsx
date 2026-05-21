@@ -7,21 +7,27 @@ import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { projectAnalysisRows, riskBoundaryNotes } from "@/lib/v12-static-data";
 
-const projectCategories = ["全部", "洁牙", "补牙", "拔牙", "根管", "儿牙", "正畸", "种植", "修复", "牙周", "美白/贴面", "半口/全口", "其他"];
+const projectCategories = ["全部", "洁牙", "补牙", "拔牙", "智齿", "根管", "儿牙", "窝沟封闭", "涂氟", "正畸", "儿童早矫", "种植", "半口/全口", "修复", "牙周", "美白", "贴面", "检查", "其他"];
 const periods = ["全部周期", "1-3天", "3-7天", "7-30天", "15-60天"];
 
 const categoryRows = [
   ["洁牙", "42", "18", "22", "18", "12", "¥3,680.00", "美团", "4.9", "1-3天", "引流项目，要看后续补牙、牙周转化"],
   ["补牙", "18", "9", "10", "8", "5", "¥4,800.00", "高德", "3.2", "3-7天", "刚需项目，重点看到院后当天成交"],
   ["拔牙", "12", "6", "8", "7", "4", "¥3,200.00", "美团", "3.8", "3-7天", "看服务体验和术前说明是否清楚"],
+  ["智齿", "14", "7", "9", "8", "5", "¥4,600.00", "高德", "3.5", "3-7天", "先看疼痛急需客户是否顺利到院"],
   ["根管", "10", "5", "7", "6", "3", "¥5,400.00", "腾讯广点通", "2.9", "3-7天", "信任要求高，要解释流程和价格"],
   ["儿牙", "16", "8", "9", "7", "4", "¥2,680.00", "腾讯广点通", "2.6", "3-7天", "家庭决策项目，要看家长顾虑"],
+  ["窝沟封闭", "9", "4", "5", "4", "3", "¥960.00", "腾讯广点通", "1.9", "3-7天", "低客单预防项目，看家长是否愿意复诊"],
+  ["涂氟", "11", "5", "7", "5", "4", "¥880.00", "腾讯广点通", "2.1", "3-7天", "适合做儿牙引流，但要看复诊"],
   ["正畸", "26", "12", "11", "5", "1", "¥12,000.00", "抖音", "1.8", "7-30天", "长周期项目，先看到院和方案沟通"],
+  ["儿童早矫", "8", "3", "4", "2", "0", "¥0.00", "抖音", "观察中", "7-30天", "家长决策慢，先看评估预约"],
   ["种植", "24", "10", "12", "7", "2", "¥28,800.00", "美团", "2.4", "7-30天", "高客单项目，不因单日无成交直接停"],
+  ["半口/全口", "5", "2", "3", "2", "0", "¥0.00", "美团", "观察中", "15-60天", "超长周期项目，只做继续跟进"],
   ["修复", "9", "4", "5", "4", "2", "¥9,600.00", "美团", "3.1", "7-14天", "方案型项目，重点看客单和方案接受度"],
   ["牙周", "8", "3", "4", "3", "1", "¥2,200.00", "美团", "1.7", "7-14天", "复诊转化项目，要追踪持续治疗"],
-  ["美白/贴面", "11", "5", "6", "4", "1", "¥6,800.00", "抖音", "2.1", "7-30天", "审美型项目，看案例表达和信任"],
-  ["半口/全口", "5", "2", "3", "2", "0", "¥0.00", "美团", "观察中", "15-60天", "超长周期项目，只做继续跟进"],
+  ["美白", "7", "3", "4", "3", "1", "¥1,680.00", "抖音", "1.6", "3-7天", "消费型项目，看审美诉求和到院意愿"],
+  ["贴面", "4", "2", "3", "2", "1", "¥6,800.00", "抖音", "2.1", "7-30天", "高审美项目，看案例表达和信任"],
+  ["检查", "28", "12", "16", "13", "5", "¥1,500.00", "美团", "1.4", "1-3天", "检查是入口项目，要看后续转化"],
   ["其他", "6", "2", "3", "2", "1", "¥900.00", "高德", "1.2", "3-7天", "先确认项目映射是否准确"],
 ];
 
@@ -114,50 +120,62 @@ export default function ProjectAnalysisPage() {
         <FilterButtons label="观察周期" options={periods} value={period} onChange={setPeriod} />
       </section>
 
-      <section className="mb-6 overflow-x-auto rounded-md border border-slate-200 bg-white">
-        <table className="w-full min-w-[1280px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
-            <tr>
-              {["项目分类", "来源客户数", "新增客户数", "预约数", "到院数", "成交数", "实收金额", "主要来源平台", "实收 ROI", "观察周期", "当前判断"].map((header) => (
-                <th key={header} className="px-4 py-3">{header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filteredCategoryRows.map((row) => (
-              <tr key={row[0]}>
-                {row.map((cell, index) => (
-                  <td key={`${row[0]}-${index}`} className="px-4 py-3 text-slate-700">
-                    {index === 0 ? <span className="font-semibold text-slate-950">{cell}</span> : cell}
-                  </td>
+      <section className="mb-6 rounded-md border border-slate-200 bg-white p-4">
+        <h3 className="text-base font-semibold text-slate-950">项目分类总览</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          这里看本周期各项目来了多少客户、预约多少、到院多少、成交多少、实收多少。
+        </p>
+        <div className="mt-4 max-h-[520px] overflow-auto">
+          <table className="w-full min-w-[1280px] border-collapse text-sm">
+            <thead className="sticky top-0 bg-slate-100 text-left text-xs font-semibold text-slate-600">
+              <tr>
+                {["项目名称", "来源客户数", "新增客户数", "预约数", "到院数", "成交数", "实收金额", "主要来源平台", "实收 ROI", "观察周期", "当前判断"].map((header) => (
+                  <th key={header} className="px-4 py-3">{header}</th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredCategoryRows.map((row) => (
+                <tr key={row[0]}>
+                  {row.map((cell, index) => (
+                    <td key={`${row[0]}-${index}`} className="px-4 py-3 text-slate-700">
+                      {index === 0 ? <span className="font-semibold text-slate-950">{cell}</span> : cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-        <table className="w-full min-w-[1680px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
-            <tr>
-              {headers.map((header) => (
-                <th key={header} className="px-4 py-3">{header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {projectAnalysisRows.map((row) => (
-              <tr key={row[0]}>
-                {row.map((cell, index) => (
-                  <td key={`${row[0]}-${index}`} className="px-4 py-3 text-slate-700">
-                    {index === 0 ? <span className="font-semibold text-slate-950">{cell}</span> : cell}
-                  </td>
+      <section className="rounded-md border border-slate-200 bg-white p-4">
+        <h3 className="text-base font-semibold text-slate-950">项目判断与建议</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          这里告诉你不同项目应该按什么周期判断，哪些可以继续观察，哪些需要处理，哪些不要急着下结论。
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[1680px] border-collapse text-sm">
+            <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
+              <tr>
+                {headers.map((header) => (
+                  <th key={header} className="px-4 py-3">{header}</th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {projectAnalysisRows.map((row) => (
+                <tr key={row[0]}>
+                  {row.map((cell, index) => (
+                    <td key={`${row[0]}-${index}`} className="px-4 py-3 text-slate-700">
+                      {index === 0 ? <span className="font-semibold text-slate-950">{cell}</span> : cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </AppShell>
   );

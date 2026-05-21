@@ -22,22 +22,12 @@ const uploadedHeaders = [
 
 const customerHeaders = [
   "日期",
-  "平台",
-  "客户编号/姓名",
-  "手机号后四位",
-  "来源类型",
+  "来源方式",
   "意向项目",
-  "预约项目",
-  "实际到院项目",
+  "到院项目",
   "成交项目",
-  "是否预约",
-  "是否到院",
-  "是否成交",
-  "实收金额",
-  "未成交原因",
-  "接待人员",
-  "医生",
   "状态",
+  "实收金额",
   "备注",
 ];
 
@@ -48,12 +38,14 @@ const projectHeaders = [
   "到院数",
   "成交数",
   "实收金额",
-  "项目类型",
+  "主要来源平台",
+  "实收 ROI",
   "观察周期",
   "当前判断",
 ];
 
 export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
+  const customerRows = buildSourceCustomerRows(data);
   const reportCsv = [
     ["统计周期", data.period],
     ["平台名称", data.name],
@@ -177,34 +169,17 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
 
       <TableSection
         title="来源客户登记"
-        description="这个模块回答：这个平台来的客户，到底来做什么项目？优先看 e看牙数据。当前 e看牙来源记录不完整时，请前台统一记录来源平台、来源项目和来源方式。"
+        description="这个模块回答：这个平台来的客户，到底来做什么项目？这里先放最常看的字段，更细的接待人员、医生、未成交原因后续进详情里看。当前 e看牙来源记录不完整时，请前台统一记录来源平台、来源项目和来源方式。"
         headers={customerHeaders}
-        rows={data.customers.map((item) => [
-          item.date,
-          item.platform,
-          item.customer,
-          item.phoneTail,
-          item.sourceType,
-          item.intendedProject,
-          item.appointmentProject,
-          item.arrivalProject,
-          item.dealProject,
-          item.appointment,
-          item.arrival,
-          item.deal,
-          item.paidAmount,
-          item.noDealReason,
-          item.staff,
-          item.doctor,
-          item.status,
-          item.note,
-        ])}
+        maxHeightClassName="max-h-[360px]"
+        rows={customerRows}
       />
 
       <TableSection
         title="项目分类统计"
         description="这里看本周期该平台客户分别来自哪些项目。高客单项目要看更长周期，不要只看当天。"
         headers={projectHeaders}
+        maxHeightClassName="max-h-[420px]"
         rows={data.projectStats.map((item) => [
           item.project,
           item.leads,
@@ -212,7 +187,8 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
           item.arrivals,
           item.deals,
           item.paidAmount,
-          item.projectType,
+          data.name.replace("分析", ""),
+          getProjectRoi(item.project),
           item.cycle,
           item.judgement,
         ])}
@@ -269,6 +245,54 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
   );
 }
 
+function buildSourceCustomerRows(data: PlatformWorkbenchData) {
+  const baseRows = data.customers.map((item) => [
+    item.date,
+    item.sourceType,
+    item.intendedProject,
+    item.arrivalProject,
+    item.dealProject,
+    item.status,
+    item.paidAmount,
+    item.note,
+  ]);
+
+  const fallbackRows = [
+    ["2026-05-17", data.sourceTypes[0] ?? data.name.replace("分析", ""), "补牙", "补牙", "补牙", "已成交", "¥520.00", "刚需客户，当天处理。"],
+    ["2026-05-16", data.sourceTypes[1] ?? data.name.replace("分析", ""), "正畸", "-", "-", "已预约", "¥0.00", "家长需要周末到院。"],
+    ["2026-05-15", data.sourceTypes[0] ?? data.name.replace("分析", ""), "儿牙", "涂氟", "涂氟", "已成交", "¥268.00", "家长关注是否疼痛。"],
+    ["2026-05-14", data.sourceTypes[2] ?? data.sourceTypes[0] ?? data.name.replace("分析", ""), "种植", "种植检查", "-", "待追踪", "¥0.00", "高客单项目继续观察。"],
+    ["2026-05-13", data.sourceTypes[0] ?? data.name.replace("分析", ""), "洁牙", "洁牙", "洁牙", "已成交", "¥198.00", "后续可追踪补牙和牙周。"],
+  ];
+
+  return [...baseRows, ...fallbackRows].slice(0, Math.max(5, baseRows.length));
+}
+
+function getProjectRoi(project: string) {
+  const roiByProject: Record<string, string> = {
+    洁牙: "2.1",
+    补牙: "2.4",
+    拔牙: "1.8",
+    智齿: "1.9",
+    根管: "2.0",
+    儿牙: "1.7",
+    窝沟封闭: "1.5",
+    涂氟: "1.6",
+    正畸: "1.2",
+    儿童早矫: "1.1",
+    种植: "1.4",
+    "半口/全口": "0.8",
+    修复: "1.9",
+    牙周: "1.6",
+    美白: "2.3",
+    贴面: "1.3",
+    检查: "0.9",
+    其他: "1.0",
+  };
+
+  return roiByProject[project] ?? "示例 1.0";
+}
+
 function SmallMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-slate-50 p-3">
@@ -283,19 +307,21 @@ function TableSection({
   description,
   headers,
   rows,
+  maxHeightClassName,
 }: {
   title: string;
   description: string;
   headers: string[];
   rows: string[][];
+  maxHeightClassName?: string;
 }) {
   return (
     <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
       <h3 className="text-base font-semibold text-slate-950">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-      <div className="mt-4 overflow-x-auto">
+      <div className={`mt-4 overflow-auto ${maxHeightClassName ?? ""}`}>
         <table className="w-full min-w-[960px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
+          <thead className="sticky top-0 bg-slate-100 text-left text-xs font-semibold text-slate-600">
             <tr>
               {headers.map((header) => (
                 <th key={header} className="px-4 py-3">{header}</th>
