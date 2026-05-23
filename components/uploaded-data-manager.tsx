@@ -47,9 +47,12 @@ export function UploadedDataManager({
   const [records, setRecords] = useState<UploadedFileRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [platformFilter, setPlatformFilter] = useState(platform ?? "");
   const [dataTypeFilter, setDataTypeFilter] = useState(dataType ?? "");
   const [downloadingId, setDownloadingId] = useState("");
+  const [updatingId, setUpdatingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -61,6 +64,7 @@ export function UploadedDataManager({
   const loadRecords = useCallback(async () => {
     setLoading(true);
     setError("");
+    setNotice("");
 
     try {
       const response = await fetch(`/api/uploads/list${queryString ? `?${queryString}` : ""}`, {
@@ -94,6 +98,7 @@ export function UploadedDataManager({
   async function downloadFile(id: string) {
     setDownloadingId(id);
     setError("");
+    setNotice("");
 
     try {
       const response = await fetch(`/api/uploads/download?id=${encodeURIComponent(id)}`, {
@@ -114,12 +119,88 @@ export function UploadedDataManager({
     }
   }
 
+  async function toggleActive(record: UploadedFileRecord) {
+    const isActive = Boolean(record.is_active);
+    const confirmed = window.confirm(
+      isActive
+        ? "确定停用这条上传记录吗？停用后不会参与后续分析，但会保留记录和原文件。"
+        : "确定重新启用这条上传记录吗？启用后后续可以参与分析。",
+    );
+
+    if (!confirmed) return;
+
+    setUpdatingId(record.id);
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await fetch("/api/uploads/toggle-active", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: record.id }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setError(payload.message ?? "上传记录状态更新失败，请稍后再试。");
+        return;
+      }
+
+      setNotice(payload.message ?? "上传记录状态已更新。");
+      await loadRecords();
+    } catch {
+      setError("上传记录状态更新失败，请检查网络或 Supabase 配置。");
+    } finally {
+      setUpdatingId("");
+    }
+  }
+
+  async function deleteRecord(record: UploadedFileRecord) {
+    const confirmed = window.confirm(
+      "确定删除这个上传文件吗？删除后会移除上传记录和 Supabase Storage 原文件。测试文件、重复文件、明显传错时才建议删除。",
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(record.id);
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await fetch("/api/uploads/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: record.id }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setError(payload.message ?? "上传记录删除失败，请稍后再试。");
+        return;
+      }
+
+      setNotice(payload.message ?? "上传记录已删除。");
+      await loadRecords();
+    } catch {
+      setError("上传记录删除失败，请检查网络或 Supabase 配置。");
+    } finally {
+      setDeletingId("");
+    }
+  }
+
   return (
     <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h3 className="text-base font-semibold text-slate-950">{title}</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+          <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold leading-6 text-amber-900">
+            上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
+          </p>
         </div>
         <button
           className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
@@ -156,6 +237,12 @@ export function UploadedDataManager({
         </div>
       ) : null}
 
+      {notice ? (
+        <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold leading-6 text-emerald-800">
+          {notice}
+        </div>
+      ) : null}
+
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[1120px] border-collapse text-sm">
           <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
@@ -166,28 +253,57 @@ export function UploadedDataManager({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {records.map((record) => (
-              <tr key={record.id}>
-                <td className="px-4 py-3 font-semibold text-slate-950">{record.original_file_name ?? "-"}</td>
+            {records.map((record) => {
+              const isActive = Boolean(record.is_active);
+
+              return (
+              <tr key={record.id} className={isActive ? "" : "bg-slate-50 opacity-70"}>
+                <td className="px-4 py-3 font-semibold text-slate-950">
+                  {record.original_file_name ?? "-"}
+                  {!isActive ? (
+                    <span className="ml-2 rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-600">
+                      已停用
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-4 py-3 text-slate-700">{record.platform ?? "-"}</td>
                 <td className="px-4 py-3 text-slate-700">{record.data_type ?? "-"}</td>
                 <td className="px-4 py-3 text-slate-700">{formatPeriod(record)}</td>
                 <td className="px-4 py-3 text-slate-700">{formatDateTime(record.uploaded_at)}</td>
                 <td className="px-4 py-3 text-slate-700">{record.parse_status === "saved" ? "已保存原文件，暂未解析" : record.parse_status ?? "-"}</td>
-                <td className="px-4 py-3 text-slate-700">{record.is_active ? "是" : "否"}</td>
+                <td className="px-4 py-3 text-slate-700">{isActive ? "是" : "否，已停用"}</td>
                 <td className="px-4 py-3 text-slate-700">{record.notes || "-"}</td>
                 <td className="px-4 py-3">
-                  <button
-                    className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={downloadingId === record.id}
-                    type="button"
-                    onClick={() => void downloadFile(record.id)}
-                  >
-                    {downloadingId === record.id ? "生成中" : "下载原文件"}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={downloadingId === record.id}
+                      type="button"
+                      onClick={() => void downloadFile(record.id)}
+                    >
+                      {downloadingId === record.id ? "生成中" : "下载原文件"}
+                    </button>
+                    <button
+                      className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={updatingId === record.id}
+                      type="button"
+                      onClick={() => void toggleActive(record)}
+                    >
+                      {updatingId === record.id ? "处理中" : isActive ? "停用" : "启用"}
+                    </button>
+                    <button
+                      className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={deletingId === record.id}
+                      type="button"
+                      onClick={() => void deleteRecord(record)}
+                    >
+                      {deletingId === record.id ? "删除中" : "删除"}
+                    </button>
+                  </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
