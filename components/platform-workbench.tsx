@@ -3,22 +3,12 @@ import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { StorageNote } from "@/components/storage-note";
+import { UploadedDataManager } from "@/components/uploaded-data-manager";
 import type { PlatformWorkbenchData } from "@/lib/platform-workbench";
 
 type PlatformWorkbenchProps = {
   data: PlatformWorkbenchData;
 };
-
-const uploadedHeaders = [
-  "文件名称",
-  "数据类型",
-  "数据周期",
-  "上传时间",
-  "行数",
-  "解析状态",
-  "是否参与分析",
-  "操作",
-];
 
 const customerHeaders = [
   "日期",
@@ -46,6 +36,7 @@ const projectHeaders = [
 
 export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
   const customerRows = buildSourceCustomerRows(data);
+  const platformName = data.name.replace("分析", "");
   const reportCsv = [
     ["统计周期", data.period],
     ["平台名称", data.name],
@@ -114,58 +105,10 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
         <StorageNote />
       </div>
 
-      <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
-        <h3 className="text-base font-semibold text-slate-950">已上传数据</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          当前为前端演示，接入数据库后可保存真实上传历史和原文件下载。
-        </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <input className="rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="按文件名搜索" />
-          <input className="rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="按数据类型搜索" />
-          <input className="rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="按日期范围搜索" />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {["数据类型", "数据周期", "是否参与分析", "解析状态"].map((item) => (
-            <button key={item} className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700">
-              筛选：{item}
-            </button>
-          ))}
-        </div>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[1040px] border-collapse text-sm">
-            <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
-              <tr>
-                {uploadedHeaders.map((header) => (
-                  <th key={header} className="px-4 py-3">{header}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {data.uploadedFiles.map((file) => (
-                <tr key={file.fileName}>
-                  <td className="px-4 py-3 font-semibold text-slate-950">{file.fileName}</td>
-                  <td className="px-4 py-3 text-slate-700">{file.dataType}</td>
-                  <td className="px-4 py-3 text-slate-700">{file.period}</td>
-                  <td className="px-4 py-3 text-slate-700">{file.uploadedAt}</td>
-                  <td className="px-4 py-3 text-slate-700">{file.rows}</td>
-                  <td className="px-4 py-3 text-slate-700">{file.parseStatus}</td>
-                  <td className="px-4 py-3 text-slate-700">{file.included}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      {["查看", "下载", "重新分析", "停用"].map((action) => (
-                        <button key={action} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
-                          {action}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-3 text-xs leading-5 text-slate-500">支持的数据类型：{data.dataTypes.join("、")}</p>
-      </section>
+      <UploadedDataManager
+        description={`这里读取 ${platformName} 的真实上传记录。当前只保存原文件，V1.6.3 再解析 Excel。`}
+        platform={platformName}
+      />
 
       <TableSection
         title="来源客户登记"

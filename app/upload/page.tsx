@@ -6,10 +6,12 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { StorageNote } from "@/components/storage-note";
+import { UploadedDataManager } from "@/components/uploaded-data-manager";
 import { pendingIntegrationNote } from "@/lib/v12-static-data";
 
 type UploadEntry = {
   name: string;
+  platform: string;
   frequency: string;
   purpose: string;
   fields?: string;
@@ -162,33 +164,35 @@ const platformDataGroups = [
 ];
 
 const dailyUploadEntries: UploadEntry[] = [
-  platformDataGroups[0].items[0],
+  { ...platformDataGroups[0].items[0], platform: "美团" },
   {
     name: "e看牙后端回流数据",
+    platform: "e看牙",
     frequency: "每日或每周上传",
     purpose: "看客户有没有进系统、有没有到院、有没有成交、有没有实收",
     fields: "如果你的 e看牙导出表是一张综合表，就先上传综合表；如果以后能分来源、就诊、收费三张表，再细分上传",
     tip: "新手阶段不要强制拆太多入口，先把来源、到院、成交、实收对上。",
   },
-  platformDataGroups[1].items[0],
-  platformDataGroups[2].items[0],
-  platformDataGroups[3].items[0],
+  { ...platformDataGroups[1].items[0], platform: "抖音" },
+  { ...platformDataGroups[2].items[0], platform: "腾讯广点通" },
+  { ...platformDataGroups[3].items[0], platform: "高德" },
 ];
 
 const adjustmentUploadEntries: UploadEntry[] = [
-  platformDataGroups[0].items[1],
-  platformDataGroups[1].items[1],
-  platformDataGroups[2].items[1],
-  platformDataGroups[3].items[1],
+  { ...platformDataGroups[0].items[1], platform: "美团" },
+  { ...platformDataGroups[1].items[1], platform: "抖音" },
+  { ...platformDataGroups[2].items[1], platform: "腾讯广点通" },
+  { ...platformDataGroups[3].items[1], platform: "高德" },
 ];
 
 const advancedUploadEntries: UploadEntry[] = [
-  platformDataGroups[0].items[2],
-  platformDataGroups[1].items[2],
-  platformDataGroups[2].items[2],
-  platformDataGroups[3].items[2],
+  { ...platformDataGroups[0].items[2], platform: "美团" },
+  { ...platformDataGroups[1].items[2], platform: "抖音" },
+  { ...platformDataGroups[2].items[2], platform: "腾讯广点通" },
+  { ...platformDataGroups[3].items[2], platform: "高德" },
   {
     name: "竞品数据",
+    platform: "竞品情报",
     frequency: "需要看市场参考时上传",
     purpose: "参考竞品项目、价格表达、活动包装、差评关键词",
     fields: "竞品名称、平台、项目、展示价格、活动机制、限制条件、主卖点、页面链接、评论区高频问题、差评关键词、可信度等级、备注",
@@ -198,6 +202,7 @@ const advancedUploadEntries: UploadEntry[] = [
 
 export default function UploadPage() {
   const [typeFiles, setTypeFiles] = useState<Record<string, string>>({});
+  const [refreshToken, setRefreshToken] = useState(0);
 
   return (
     <AppShell activeHref="/upload">
@@ -269,6 +274,7 @@ export default function UploadPage() {
         selectedFiles={typeFiles}
         title="每日必传"
         onSelect={(name, fileName) => setTypeFiles((current) => ({ ...current, [name]: fileName }))}
+        onUploaded={() => setRefreshToken((current) => current + 1)}
       />
 
       <UploadLayer
@@ -277,6 +283,7 @@ export default function UploadPage() {
         selectedFiles={typeFiles}
         title="调整前再传"
         onSelect={(name, fileName) => setTypeFiles((current) => ({ ...current, [name]: fileName }))}
+        onUploaded={() => setRefreshToken((current) => current + 1)}
       />
 
       <details className="mb-6 rounded-md border border-slate-200 bg-white p-4">
@@ -291,6 +298,7 @@ export default function UploadPage() {
               entry={entry}
               selectedFile={typeFiles[entry.name]}
               onSelect={(fileName) => setTypeFiles((current) => ({ ...current, [entry.name]: fileName }))}
+              onUploaded={() => setRefreshToken((current) => current + 1)}
             />
           ))}
         </div>
@@ -328,6 +336,11 @@ export default function UploadPage() {
           查看今日总建议
         </Link>
       </section>
+
+      <UploadedDataManager
+        key={refreshToken}
+        description="这里读取 Supabase uploaded_files 的真实上传记录。当前只保存原文件，V1.6.3 再解析 Excel。"
+      />
     </AppShell>
   );
 }
@@ -351,12 +364,14 @@ function UploadLayer({
   entries,
   selectedFiles,
   onSelect,
+  onUploaded,
 }: {
   title: string;
   description: string;
   entries: UploadEntry[];
   selectedFiles: Record<string, string>;
   onSelect: (name: string, fileName: string) => void;
+  onUploaded: () => void;
 }) {
   return (
     <section className="mb-6 rounded-md border border-slate-200 bg-white p-4">
@@ -369,6 +384,7 @@ function UploadLayer({
             entry={entry}
             selectedFile={selectedFiles[entry.name]}
             onSelect={(fileName) => onSelect(entry.name, fileName)}
+            onUploaded={onUploaded}
           />
         ))}
       </div>
@@ -380,11 +396,58 @@ function UploadEntryCard({
   entry,
   selectedFile,
   onSelect,
+  onUploaded,
 }: {
   entry: UploadEntry;
   selectedFile?: string;
   onSelect: (fileName: string) => void;
+  onUploaded: () => void;
 }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
+  const [notes, setNotes] = useState("");
+  const [message, setMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  async function uploadFile() {
+    if (!file) {
+      setMessage("请先选择要上传的文件。");
+      return;
+    }
+
+    setUploading(true);
+    setMessage("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("platform", entry.platform);
+    formData.append("dataType", entry.name);
+    formData.append("periodStart", periodStart);
+    formData.append("periodEnd", periodEnd);
+    formData.append("notes", notes);
+
+    try {
+      const response = await fetch("/api/uploads", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setMessage(payload.message ?? payload.error ?? "上传失败，请检查 Supabase 配置或稍后再试。");
+        return;
+      }
+
+      setMessage("上传成功，已保存到 Supabase。当前只保存原文件，V1.6.3 再解析 Excel。");
+      onUploaded();
+    } catch {
+      setMessage("上传失败，请检查网络或 Supabase 配置。");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <article className="rounded-md border border-slate-200 bg-slate-50 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -392,6 +455,7 @@ function UploadEntryCard({
         <span className="rounded-md bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-800">{entry.frequency}</span>
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-600">用途：{entry.purpose}</p>
+      <p className="mt-2 text-xs font-semibold text-slate-500">平台：{entry.platform}</p>
       {entry.fields ? <p className="mt-2 text-xs leading-5 text-slate-600">常见字段：{entry.fields}</p> : null}
       <p className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold leading-5 text-amber-900">提示：{entry.tip}</p>
       <label className="mt-3 inline-flex cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50">
@@ -401,16 +465,58 @@ function UploadEntryCard({
           className="sr-only"
           type="file"
           onChange={(event) => {
-            const fileName = event.target.files?.[0]?.name;
-            if (fileName) onSelect(fileName);
+            const selected = event.target.files?.[0];
+            if (!selected) return;
+            setFile(selected);
+            onSelect(selected.name);
           }}
         />
       </label>
+      <div className="mt-3 grid gap-2">
+        <div className="grid gap-2 md:grid-cols-2">
+          <label className="text-xs font-semibold text-slate-600">
+            数据周期开始
+            <input
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+              type="date"
+              value={periodStart}
+              onChange={(event) => setPeriodStart(event.target.value)}
+            />
+          </label>
+          <label className="text-xs font-semibold text-slate-600">
+            数据周期结束
+            <input
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+              type="date"
+              value={periodEnd}
+              onChange={(event) => setPeriodEnd(event.target.value)}
+            />
+          </label>
+        </div>
+        <label className="text-xs font-semibold text-slate-600">
+          备注，可选
+          <input
+            className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+            placeholder="例如：本周美团汇总表"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+          />
+        </label>
+      </div>
+      <button
+        className="mt-3 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={uploading}
+        type="button"
+        onClick={() => void uploadFile()}
+      >
+        {uploading ? "上传中..." : "上传到 Supabase"}
+      </button>
       {selectedFile ? (
         <p className="mt-2 text-xs font-semibold text-slate-500">
           已选择：{selectedFile}。当前为前端演示，接入解析功能后会按这个数据类型检查字段是否匹配。
         </p>
       ) : null}
+      {message ? <p className="mt-2 text-xs font-semibold leading-5 text-amber-900">{message}</p> : null}
     </article>
   );
 }
