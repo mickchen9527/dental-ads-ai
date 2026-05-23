@@ -3,6 +3,8 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { getSupabaseEnvStatus } from "@/lib/supabase/env";
 
+export const dynamic = "force-dynamic";
+
 export default function SupabaseStatusPage() {
   const status = getSupabaseEnvStatus();
 
@@ -60,6 +62,11 @@ export default function SupabaseStatusPage() {
 
       <section className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
         V1.6.1 只检查 Supabase 是否配置完成。真正保存上传文件，需要 V1.6.2 建立 Storage 和上传记录写入。
+        {!status.allConfigured ? (
+          <p className="mt-2">
+            如果本地已配置但线上未配置，请检查 Vercel Environment Variables 是否添加到 Production，并重新部署。
+          </p>
+        ) : null}
       </section>
 
       <Link className="mt-6 inline-flex rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-800" href="/data-sources">

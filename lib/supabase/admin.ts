@@ -4,7 +4,7 @@ let adminClient: SupabaseClient | null = null;
 
 export function getSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return null;
@@ -22,11 +22,13 @@ export function getSupabaseAdminClient() {
 }
 
 export function getSupabaseAdminClientStatus() {
+  const hasServiceKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY);
+
   return {
-    ready: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
+    ready: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && hasServiceKey),
     message:
-      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+      process.env.NEXT_PUBLIC_SUPABASE_URL && hasServiceKey
         ? "Supabase 服务端管理配置已完成。"
-        : "Supabase 服务端管理配置还不完整，请检查 NEXT_PUBLIC_SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY。",
+        : "Supabase 服务端管理配置还不完整，请检查 NEXT_PUBLIC_SUPABASE_URL 和 service role / secret key。",
   };
 }
