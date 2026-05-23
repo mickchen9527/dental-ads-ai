@@ -53,6 +53,7 @@ export function UploadedDataManager({
   const [downloadingId, setDownloadingId] = useState("");
   const [updatingId, setUpdatingId] = useState("");
   const [deletingId, setDeletingId] = useState("");
+  const [parsingId, setParsingId] = useState("");
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -192,6 +193,35 @@ export function UploadedDataManager({
     }
   }
 
+  async function parseMeituanSummary(record: UploadedFileRecord) {
+    setParsingId(record.id);
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await fetch("/api/uploads/parse-meituan-summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: record.id }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setError(payload.message ?? "美团推广汇总数据解析失败，请稍后再试。");
+        return;
+      }
+
+      setNotice(payload.message ?? "美团推广汇总数据解析成功。");
+      await loadRecords();
+    } catch {
+      setError("美团推广汇总数据解析失败，请检查网络或 Supabase 配置。");
+    } finally {
+      setParsingId("");
+    }
+  }
+
   return (
     <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -200,6 +230,9 @@ export function UploadedDataManager({
           <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
           <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold leading-6 text-amber-900">
             上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
+          </p>
+          <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
+            当前 V1.6.3.1 只支持解析美团推广汇总数据。其他数据类型会在后续版本逐步接入。
           </p>
         </div>
         <button
@@ -255,6 +288,8 @@ export function UploadedDataManager({
           <tbody className="divide-y divide-slate-100">
             {records.map((record) => {
               const isActive = Boolean(record.is_active);
+              const canParseMeituanSummary = isActive && isMeituanSummaryRecord(record);
+              const parseButtonText = record.parse_status === "parsed" ? "重新解析" : "解析";
 
               return (
               <tr key={record.id} className={isActive ? "" : "bg-slate-50 opacity-70"}>
@@ -270,11 +305,21 @@ export function UploadedDataManager({
                 <td className="px-4 py-3 text-slate-700">{record.data_type ?? "-"}</td>
                 <td className="px-4 py-3 text-slate-700">{formatPeriod(record)}</td>
                 <td className="px-4 py-3 text-slate-700">{formatDateTime(record.uploaded_at)}</td>
-                <td className="px-4 py-3 text-slate-700">{record.parse_status === "saved" ? "已保存原文件，暂未解析" : record.parse_status ?? "-"}</td>
+                <td className="px-4 py-3 text-slate-700">{formatParseStatus(record.parse_status)}</td>
                 <td className="px-4 py-3 text-slate-700">{isActive ? "是" : "否，已停用"}</td>
                 <td className="px-4 py-3 text-slate-700">{record.notes || "-"}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
+                    {canParseMeituanSummary ? (
+                      <button
+                        className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={parsingId === record.id}
+                        type="button"
+                        onClick={() => void parseMeituanSummary(record)}
+                      >
+                        {parsingId === record.id ? "解析中" : parseButtonText}
+                      </button>
+                    ) : null}
                     <button
                       className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={downloadingId === record.id}
@@ -343,4 +388,15 @@ function formatDateTime(value: string | null) {
     timeStyle: "short",
     hour12: false,
   }).format(new Date(value));
+}
+
+function formatParseStatus(status: string | null) {
+  if (status === "saved") return "已保存，未解析";
+  if (status === "parsed") return "已解析";
+  if (status === "failed") return "解析失败";
+  return status ?? "-";
+}
+
+function isMeituanSummaryRecord(record: UploadedFileRecord) {
+  return record.data_type === "美团推广汇总数据" || record.data_type === "meituan-summary";
 }
