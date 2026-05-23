@@ -24,6 +24,23 @@ Do not commit `.env.local` or real passwords to Git. The login session uses an
 httpOnly cookie named `dental_ads_auth`; in production the cookie is marked
 `secure`.
 
+## Supabase V1.6.1
+
+V1.6.1 only adds the Supabase connection foundation. It checks whether the
+environment variables are configured, but it does not save uploaded files yet.
+
+Add these variables locally in `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=你的 Supabase 项目 URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 anon key
+SUPABASE_SERVICE_ROLE_KEY=你的 service role key
+```
+
+On Vercel, add the same variables in the project settings. Do not expose the
+service role key in browser code. The page `/data-sources/supabase-status`
+only shows whether each variable is configured; it never prints the real key.
+
 First, run the development server:
 
 ```bash
