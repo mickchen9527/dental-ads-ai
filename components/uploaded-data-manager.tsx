@@ -235,7 +235,7 @@ export function UploadedDataManager({
             上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
           </p>
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            当前已支持解析美团推广汇总、美团关键词、e看牙后端回流、抖音计划汇总、抖音素材/创意和抖音表单/私信线索数据。线索数据用于看表单、私信有没有变成真实意向客户；后续会和 e看牙回流做闭环。
+            当前已支持解析美团、e看牙、抖音计划/素材/线索，以及腾讯广点通计划汇总数据。腾讯计划汇总用于看计划层级的花费、点击、表单、电话和转化成本；广告组/创意和线索明细会在后续版本接入。
           </p>
         </div>
         <button
@@ -453,6 +453,23 @@ function getParseConfig(record: UploadedFileRecord) {
     return {
       endpoint: "/api/uploads/parse-douyin-leads",
       label: "抖音表单/私信线索数据",
+    };
+  }
+
+  if (
+    record.data_type === "腾讯广点通计划汇总数据" ||
+    record.data_type === "腾讯计划汇总数据" ||
+    record.data_type === "广点通计划汇总数据" ||
+    record.data_type === "腾讯账户/计划汇总数据" ||
+    record.data_type === "腾讯广告计划汇总数据" ||
+    record.data_type === "腾讯信息流计划汇总数据" ||
+    record.data_type === "腾讯广点通账户/计划汇总数据" ||
+    record.data_type === "广点通账户/计划汇总数据" ||
+    record.data_type === "gdt-plan-summary"
+  ) {
+    return {
+      endpoint: "/api/uploads/parse-gdt-plan-summary",
+      label: "腾讯广点通计划汇总数据",
     };
   }
 
