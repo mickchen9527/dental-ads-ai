@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { MeituanClosedLoopBoard } from "@/components/meituan-closed-loop-board";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
@@ -42,6 +43,8 @@ export default function RoiAnalysisPage() {
       <div className="mb-6">
         <StorageNote />
       </div>
+
+      <MeituanClosedLoopBoard />
 
       <section className="mb-6 grid gap-4 md:grid-cols-4">
         <MetricCard label="本周广告费" value="¥12,800.00" helper="当前已上传平台花费" tone="cyan" />
