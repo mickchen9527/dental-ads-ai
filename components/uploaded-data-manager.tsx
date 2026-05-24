@@ -235,7 +235,7 @@ export function UploadedDataManager({
             上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
           </p>
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            当前已支持解析美团推广汇总数据和美团关键词数据。美团关键词数据必须包含“关键词”字段，不能用推广汇总表代替。
+            当前已支持解析美团推广汇总、美团关键词和 e看牙后端回流数据。e看牙数据用于判断客户是否到院、成交和实收，是后续闭环 ROI 的基础。
           </p>
         </div>
         <button
@@ -413,6 +413,13 @@ function getParseConfig(record: UploadedFileRecord) {
     return {
       endpoint: "/api/uploads/parse-meituan-keywords",
       label: "美团关键词数据",
+    };
+  }
+
+  if (record.data_type === "e看牙后端回流数据" || record.data_type === "ekanya-backflow") {
+    return {
+      endpoint: "/api/uploads/parse-ekanya-backflow",
+      label: "e看牙后端回流数据",
     };
   }
 
