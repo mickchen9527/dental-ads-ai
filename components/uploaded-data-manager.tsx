@@ -235,10 +235,7 @@ export function UploadedDataManager({
             上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
           </p>
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            当前已支持解析美团推广汇总、美团关键词和 e看牙后端回流数据。e看牙数据用于判断客户是否到院、成交和实收，是后续闭环 ROI 的基础。
-          </p>
-          <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            当前已支持解析美团推广汇总、美团关键词、e看牙后端回流和抖音计划汇总数据。抖音计划汇总数据用于看计划层级的花费、点击、转化和转化成本；素材/创意和线索明细会在后续版本接入。
+            当前已支持解析美团推广汇总、美团关键词、e看牙后端回流、抖音计划汇总和抖音素材/创意数据。抖音素材/创意数据用于判断哪个视频、素材、创意花了钱但没有转化；表单/私信线索会在后续版本接入。
           </p>
         </div>
         <button
@@ -434,6 +431,17 @@ function getParseConfig(record: UploadedFileRecord) {
     return {
       endpoint: "/api/uploads/parse-douyin-plan-summary",
       label: "抖音计划汇总数据",
+    };
+  }
+
+  if (
+    record.data_type === "\u6296\u97f3\u7d20\u6750/\u521b\u610f\u6570\u636e" ||
+    record.data_type === "\u6296\u97f3\u7d20\u6750 / \u521b\u610f\u6570\u636e" ||
+    record.data_type === "douyin-creatives"
+  ) {
+    return {
+      endpoint: "/api/uploads/parse-douyin-creatives",
+      label: "\u6296\u97f3\u7d20\u6750/\u521b\u610f\u6570\u636e",
     };
   }
   return null;
