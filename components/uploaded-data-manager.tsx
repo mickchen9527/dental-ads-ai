@@ -193,13 +193,16 @@ export function UploadedDataManager({
     }
   }
 
-  async function parseMeituanSummary(record: UploadedFileRecord) {
+  async function parseUploadRecord(record: UploadedFileRecord) {
+    const parseConfig = getParseConfig(record);
+    if (!parseConfig) return;
+
     setParsingId(record.id);
     setError("");
     setNotice("");
 
     try {
-      const response = await fetch("/api/uploads/parse-meituan-summary", {
+      const response = await fetch(parseConfig.endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -209,14 +212,14 @@ export function UploadedDataManager({
       const payload = await response.json();
 
       if (!response.ok) {
-        setError(payload.message ?? "美团推广汇总数据解析失败，请稍后再试。");
+        setError(payload.message ?? `${parseConfig.label}解析失败，请稍后再试。`);
         return;
       }
 
-      setNotice(payload.message ?? "美团推广汇总数据解析成功。");
+      setNotice(payload.message ?? `${parseConfig.label}解析成功。`);
       await loadRecords();
     } catch {
-      setError("美团推广汇总数据解析失败，请检查网络或 Supabase 配置。");
+      setError(`${parseConfig.label}解析失败，请检查网络或 Supabase 配置。`);
     } finally {
       setParsingId("");
     }
@@ -232,7 +235,7 @@ export function UploadedDataManager({
             上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
           </p>
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            当前 V1.6.3.1 只支持解析美团推广汇总数据。其他数据类型会在后续版本逐步接入。
+            当前已支持解析美团推广汇总数据和美团关键词数据。美团关键词数据必须包含“关键词”字段，不能用推广汇总表代替。
           </p>
         </div>
         <button
@@ -288,7 +291,7 @@ export function UploadedDataManager({
           <tbody className="divide-y divide-slate-100">
             {records.map((record) => {
               const isActive = Boolean(record.is_active);
-              const canParseMeituanSummary = isActive && isMeituanSummaryRecord(record);
+              const parseConfig = isActive ? getParseConfig(record) : null;
               const parseButtonText = record.parse_status === "parsed" ? "重新解析" : "解析";
 
               return (
@@ -310,12 +313,13 @@ export function UploadedDataManager({
                 <td className="px-4 py-3 text-slate-700">{record.notes || "-"}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    {canParseMeituanSummary ? (
+                    {parseConfig ? (
                       <button
                         className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                         disabled={parsingId === record.id}
                         type="button"
-                        onClick={() => void parseMeituanSummary(record)}
+                        onClick={() => void parseUploadRecord(record)}
+                        title={parseConfig.label}
                       >
                         {parsingId === record.id ? "解析中" : parseButtonText}
                       </button>
@@ -397,6 +401,20 @@ function formatParseStatus(status: string | null) {
   return status ?? "-";
 }
 
-function isMeituanSummaryRecord(record: UploadedFileRecord) {
-  return record.data_type === "美团推广汇总数据" || record.data_type === "meituan-summary";
+function getParseConfig(record: UploadedFileRecord) {
+  if (record.data_type === "美团推广汇总数据" || record.data_type === "meituan-summary") {
+    return {
+      endpoint: "/api/uploads/parse-meituan-summary",
+      label: "美团推广汇总数据",
+    };
+  }
+
+  if (record.data_type === "美团关键词数据" || record.data_type === "meituan-keywords") {
+    return {
+      endpoint: "/api/uploads/parse-meituan-keywords",
+      label: "美团关键词数据",
+    };
+  }
+
+  return null;
 }
