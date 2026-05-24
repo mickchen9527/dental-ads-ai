@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
+import { PlatformOverviewBoard } from "@/components/platform-overview-board";
 import { PlatformPerformanceTable } from "@/components/platform-performance-table";
 import { dataSources } from "@/lib/config/dataSources";
 import { standardRows } from "@/lib/mock-data";
@@ -29,13 +30,15 @@ export default function PlatformAnalysisPage() {
     <AppShell activeHref="/platform-analysis">
       <PageHeader
         eyebrow="平台接入口径"
-        title="平台分析"
-        description="当前 V1 只将美团纳入广告平台计算；其他平台展示接入状态，避免误认为已经参与真实实收 ROI 计算。"
+        title="多平台统一看板"
+        description="当前只看平台前端数据和平台线索，不代表最终成交效果。最终到院、成交和实收要看多平台 + e看牙闭环。"
       />
 
       <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
         {pendingIntegrationNote}
       </section>
+
+      <PlatformOverviewBoard />
 
       <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {platformStatus.map(([title, description, tone]) => (

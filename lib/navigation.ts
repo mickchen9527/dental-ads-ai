@@ -22,6 +22,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "平台分析",
     items: [
+      { href: "/platform-analysis", label: "多平台统一看板" },
       { href: "/platforms/meituan", label: "美团分析" },
       { href: "/platforms/douyin", label: "抖音分析" },
       { href: "/platforms/gdt", label: "腾讯广点通分析" },
