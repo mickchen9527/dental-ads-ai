@@ -235,7 +235,7 @@ export function UploadedDataManager({
             上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
           </p>
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            当前已支持解析美团、e看牙、抖音、腾讯和高德推广汇总/行为数据。高德电话/导航/门店访问数据用于判断用户是否有到店动作；高德线索数据会在后续版本接入。
+            当前已支持解析美团、e看牙、抖音、腾讯和高德推广汇总/行为/线索数据。高德线索数据用于看高德是否带来真实咨询客户；后续会进入多平台统一看板。
           </p>
         </div>
         <button
@@ -526,6 +526,19 @@ function getParseConfig(record: UploadedFileRecord) {
     return {
       endpoint: "/api/uploads/parse-amap-actions",
       label: "高德电话/导航/门店访问数据",
+    };
+  }
+
+  if (
+    record.data_type === "高德线索数据" ||
+    record.data_type === "高德留资数据" ||
+    record.data_type === "高德咨询线索数据" ||
+    record.data_type === "高德客户线索数据" ||
+    record.data_type === "amap-leads"
+  ) {
+    return {
+      endpoint: "/api/uploads/parse-amap-leads",
+      label: "高德线索数据",
     };
   }
 
