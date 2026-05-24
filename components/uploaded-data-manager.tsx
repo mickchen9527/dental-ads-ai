@@ -235,7 +235,7 @@ export function UploadedDataManager({
             上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
           </p>
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            当前已支持解析美团、e看牙、抖音、腾讯计划/创意/线索数据。腾讯表单/电话线索数据用于看表单、电话有没有变成真实意向客户；后续会和 e看牙回流做多平台闭环。
+            当前已支持解析美团、e看牙、抖音、腾讯和高德推广汇总数据。高德推广汇总用于看花费、曝光、点击、电话、导航和门店浏览；高德电话/导航明细和线索数据会在后续版本接入。
           </p>
         </div>
         <button
@@ -500,6 +500,18 @@ function getParseConfig(record: UploadedFileRecord) {
     return {
       endpoint: "/api/uploads/parse-gdt-leads",
       label: "腾讯表单/电话线索数据",
+    };
+  }
+
+  if (
+    record.data_type === "高德推广汇总数据" ||
+    record.data_type === "高德广告汇总数据" ||
+    record.data_type === "高德投放汇总数据" ||
+    record.data_type === "amap-summary"
+  ) {
+    return {
+      endpoint: "/api/uploads/parse-amap-summary",
+      label: "高德推广汇总数据",
     };
   }
 
