@@ -237,6 +237,9 @@ export function UploadedDataManager({
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
             当前已支持解析美团推广汇总、美团关键词和 e看牙后端回流数据。e看牙数据用于判断客户是否到院、成交和实收，是后续闭环 ROI 的基础。
           </p>
+          <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
+            当前已支持解析美团推广汇总、美团关键词、e看牙后端回流和抖音计划汇总数据。抖音计划汇总数据用于看计划层级的花费、点击、转化和转化成本；素材/创意和线索明细会在后续版本接入。
+          </p>
         </div>
         <button
           className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
@@ -422,6 +425,16 @@ function getParseConfig(record: UploadedFileRecord) {
       label: "e看牙后端回流数据",
     };
   }
-
+  if (
+    record.data_type === "抖音计划汇总数据" ||
+    record.data_type === "抖音广告计划汇总数据" ||
+    record.data_type === "douyin-plan-summary" ||
+    record.data_type === "douyin-ad-plan-summary"
+  ) {
+    return {
+      endpoint: "/api/uploads/parse-douyin-plan-summary",
+      label: "抖音计划汇总数据",
+    };
+  }
   return null;
 }

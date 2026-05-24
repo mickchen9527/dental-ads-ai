@@ -339,7 +339,7 @@ export default function UploadPage() {
 
       <UploadedDataManager
         key={refreshToken}
-        description="这里读取 Supabase uploaded_files 的真实上传记录。当前只保存原文件，V1.6.3 再解析 Excel。"
+        description="这里读取 Supabase uploaded_files 的真实上传记录。上传后请在这里点击解析，系统会把已支持的数据写入对应明细表。"
       />
     </AppShell>
   );
@@ -439,7 +439,7 @@ function UploadEntryCard({
         return;
       }
 
-      setMessage("上传成功，已保存到 Supabase。当前只保存原文件，V1.6.3 再解析 Excel。");
+            setMessage("上传成功，已保存到 Supabase。请在下方‘已上传数据’里点击解析。");
       onUploaded();
     } catch {
       setMessage("上传失败，请检查网络或 Supabase 配置。");
