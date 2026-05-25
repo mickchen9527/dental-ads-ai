@@ -383,7 +383,7 @@ export function CompetitorPriceLibrary() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" id="competitor-price-library">
       <section className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
         <p className="font-semibold">合规提醒</p>
         <p>
@@ -751,4 +751,5 @@ function hasActiveFilters(filters: Filters) {
     return Boolean(value.trim());
   });
 }
+
 
