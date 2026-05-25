@@ -1,12 +1,10 @@
 import { AppShell } from "@/components/app-shell";
-import { MeituanClosedLoopBoard } from "@/components/meituan-closed-loop-board";
 import { MetricCard } from "@/components/metric-card";
 import { MultiPlatformClosedLoopBoard } from "@/components/multi-platform-closed-loop-board";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { StorageNote } from "@/components/storage-note";
 import { TimeScopeFilter } from "@/components/time-scope-filter";
-import { UploadedDataManager } from "@/components/uploaded-data-manager";
 
 const roiRows = [
   ["美团", "¥12,800.00", "¥18,600.00", "1.45", "回收偏弱，先优化页面和承接"],
@@ -15,19 +13,13 @@ const roiRows = [
   ["高德", "¥0.00", "¥1,040.00", "-", "预留平台，先分清自然到店和广告到店"],
 ];
 
-const uploadedRows = [
-  ["meituan-20260513-0519.csv", "平台广告花费", "近 7 天", "2026-05-19 09:12", "386", "解析成功", "是"],
-  ["ekanya-payment-20260513-0519.csv", "e看牙成交收费明细", "近 7 天", "2026-05-19 09:31", "15", "需要复核", "是"],
-  ["ekanya-source-20260513-0519.csv", "e看牙患者来源分析", "近 7 天", "2026-05-19 09:25", "61", "解析成功", "是"],
-];
-
 export default function RoiAnalysisPage() {
   return (
     <AppShell activeHref="/roi-analysis">
       <PageHeader
         eyebrow="后端闭环"
         title="闭环 ROI 分析"
-        description="这里统一看实收 ROI。实收 ROI = e看牙实际实收金额 / 广告花费。当前未配置项目真实成本，系统只计算实收 ROI，不计算毛利 ROI。"
+        description="这里用于查看多平台 + e看牙初步闭环。平台前端数据来自美团、抖音、腾讯广点通、高德；到院、成交、实收来自 e看牙后端回流。当前是初步闭环，不是精准归因。"
         action={
           <PageHelpButton
             purpose="把广告花费和 e看牙实收金额放在一起看，判断钱有没有回收。"
@@ -45,7 +37,11 @@ export default function RoiAnalysisPage() {
         <StorageNote />
       </div>
 
-      <MeituanClosedLoopBoard />
+      <section className="mb-6 rounded-md border border-cyan-200 bg-cyan-50 p-4 text-sm leading-6 text-cyan-900">
+        <p className="font-semibold">这里用于查看多平台 + e看牙初步闭环。</p>
+        <p>平台前端数据来自美团、抖音、腾讯广点通、高德；到院、成交、实收来自 e看牙后端回流。</p>
+        <p>当前是初步闭环，不是精准归因。</p>
+      </section>
 
       <MultiPlatformClosedLoopBoard />
 
@@ -81,12 +77,15 @@ export default function RoiAnalysisPage() {
         </table>
       </section>
 
-      <UploadedDataManager
-        title="已上传数据"
-        description="这里管理闭环 ROI 需要用到的文件：平台广告花费、e看牙患者来源分析、e看牙成交收费明细。缺任何一类，都先别急着判断钱有没有回收。"
-        filters={["文件名", "数据类型", "日期范围", "来源平台", "项目"]}
-        rows={uploadedRows}
-      />
+      <section className="mt-6 rounded-md border border-cyan-200 bg-cyan-50 p-4">
+        <h3 className="text-base font-semibold text-cyan-950">数据来源</h3>
+        <p className="mt-2 text-sm leading-6 text-cyan-900">
+          数据来自已解析上传记录。如需管理文件，请到数据上传页。
+        </p>
+        <a className="mt-4 inline-flex rounded-md border border-cyan-200 bg-white px-3 py-2 text-sm font-semibold text-cyan-800" href="/upload">
+          去数据上传页
+        </a>
+      </section>
 
       <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
         <h3 className="text-base font-semibold text-slate-950">周报提示</h3>

@@ -4,19 +4,12 @@ import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { StorageNote } from "@/components/storage-note";
 import { TimeScopeFilter } from "@/components/time-scope-filter";
-import { UploadedDataManager } from "@/components/uploaded-data-manager";
 
 const rows = [
   ["美团", "42", "28", "19", "12", "¥18,600.00", "来源较清楚，继续补成交备注"],
   ["抖音", "8", "5", "1", "0", "¥0.00", "来源记录少，先补前台登记"],
   ["腾讯广点通", "6", "4", "3", "1", "¥268.00", "样本少，先观察"],
   ["高德", "5", "2", "3", "2", "¥1,040.00", "自然到店和广告到店要分开记"],
-];
-
-const uploadedRows = [
-  ["ekanya-source-20260513-0519.csv", "患者来源分析", "近 7 天", "2026-05-19 09:25", "61", "解析成功", "是"],
-  ["ekanya-visit-20260513-0519.csv", "患者就诊分析", "近 7 天", "2026-05-19 09:28", "26", "解析成功", "是"],
-  ["ekanya-payment-20260513-0519.csv", "成交收费明细", "近 7 天", "2026-05-19 09:31", "15", "需要复核", "是"],
 ];
 
 export default function EkanyaAnalysisPage() {
@@ -71,12 +64,15 @@ export default function EkanyaAnalysisPage() {
         </table>
       </section>
 
-      <UploadedDataManager
-        title="已上传数据"
-        description="这里管理 e看牙回流文件：患者来源分析、患者就诊分析、成交收费明细。来源不清时，先补记录再看预算建议。"
-        filters={["文件名", "数据类型", "日期范围", "来源平台", "项目"]}
-        rows={uploadedRows}
-      />
+      <section className="mt-6 rounded-md border border-cyan-200 bg-cyan-50 p-4">
+        <h3 className="text-base font-semibold text-cyan-950">数据来源</h3>
+        <p className="mt-2 text-sm leading-6 text-cyan-900">
+          数据来自已解析的 e看牙后端回流数据。如需上传、解析、停用或删除文件，请到数据上传页管理。
+        </p>
+        <a className="mt-4 inline-flex rounded-md border border-cyan-200 bg-white px-3 py-2 text-sm font-semibold text-cyan-800" href="/upload">
+          去数据上传页
+        </a>
+      </section>
 
       <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
         <h3 className="text-base font-semibold text-slate-950">周报提示</h3>

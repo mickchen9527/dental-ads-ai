@@ -4,7 +4,6 @@ import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { StorageNote } from "@/components/storage-note";
-import { UploadedDataManager } from "@/components/uploaded-data-manager";
 import { pendingIntegrationNote } from "@/lib/v12-static-data";
 
 const complianceText =
@@ -61,14 +60,6 @@ const competitors = [
     confidence: "B类",
     counter: "拆解活动条件后再判断，不直接跟价；我方强化医生、材料、服务和购买须知透明度。",
   },
-];
-
-const uploadedRows = [
-  ["competitor-price-202605.csv", "竞品价格表", "本月", "2026-05-18 17:20", "18", "解析成功", "仅作参考"],
-  ["competitor-screenshots.zip", "竞品页面截图", "本周", "2026-05-18 17:25", "12", "前端演示", "仅作参考"],
-  ["competitor-links.csv", "竞品公开页面链接记录", "本周", "2026-05-18 17:30", "9", "解析成功", "仅作参考"],
-  ["competitor-comments.csv", "竞品评论关键词表", "本周", "2026-05-18 17:35", "45", "需要人工复核", "仅作参考"],
-  ["competitor-campaigns.csv", "竞品活动表", "本周", "2026-05-18 17:40", "8", "解析成功", "仅作参考"],
 ];
 
 export default function CompetitorIntelligencePage() {
@@ -197,12 +188,15 @@ export default function CompetitorIntelligencePage() {
         })}
       </section>
 
-      <UploadedDataManager
-        title="已上传数据"
-        description="这里管理竞品价格表、公开页面截图、公开页面链接记录、评论关键词表和活动表。竞品情报仅作参考，不直接参与调价，不直接决定预算。"
-        filters={["文件名", "数据类型", "日期范围", "平台", "项目"]}
-        rows={uploadedRows}
-      />
+      <section className="mt-6 rounded-md border border-cyan-200 bg-cyan-50 p-4">
+        <h3 className="text-base font-semibold text-cyan-950">数据来源</h3>
+        <p className="mt-2 text-sm leading-6 text-cyan-900">
+          数据来自已解析上传记录。如需管理文件，请到数据上传页。竞品情报仅作参考，不直接参与调价，不直接决定预算。
+        </p>
+        <a className="mt-4 inline-flex rounded-md border border-cyan-200 bg-white px-3 py-2 text-sm font-semibold text-cyan-800" href="/upload">
+          去数据上传页
+        </a>
+      </section>
 
       <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
         <h3 className="text-base font-semibold text-slate-950">生成竞品观察周报</h3>

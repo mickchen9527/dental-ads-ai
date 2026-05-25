@@ -3,7 +3,6 @@ import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { StorageNote } from "@/components/storage-note";
-import { UploadedDataManager } from "@/components/uploaded-data-manager";
 import type { PlatformWorkbenchData } from "@/lib/platform-workbench";
 
 type PlatformWorkbenchProps = {
@@ -36,7 +35,6 @@ const projectHeaders = [
 
 export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
   const customerRows = buildSourceCustomerRows(data);
-  const platformName = data.name.replace("分析", "");
   const reportCsv = [
     ["统计周期", data.period],
     ["平台名称", data.name],
@@ -105,10 +103,15 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
         <StorageNote />
       </div>
 
-      <UploadedDataManager
-        description={`这里读取 ${platformName} 的真实上传记录。当前只保存原文件，V1.6.3 再解析 Excel。`}
-        platform={platformName}
-      />
+      <section className="mt-6 rounded-md border border-cyan-200 bg-cyan-50 p-4">
+        <h3 className="text-base font-semibold text-cyan-950">数据来源</h3>
+        <p className="mt-2 text-sm leading-6 text-cyan-900">
+          数据来自已解析上传记录。如需管理文件，请到数据上传页。
+        </p>
+        <a className="mt-4 inline-flex rounded-md border border-cyan-200 bg-white px-3 py-2 text-sm font-semibold text-cyan-800" href="/upload">
+          去数据上传页
+        </a>
+      </section>
 
       <TableSection
         title="来源客户登记"
