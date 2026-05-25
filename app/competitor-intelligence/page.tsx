@@ -1,6 +1,5 @@
 ﻿import { AppShell } from "@/components/app-shell";
-import { CompetitorPriceAnalysisBoard } from "@/components/competitor-price-analysis-board";
-import { CompetitorPriceLibrary } from "@/components/competitor-price-library";
+import { CompetitorPriceLibraryRefined } from "@/components/competitor-price-library-refined";
 import { PageHeader } from "@/components/page-header";
 
 export default function CompetitorIntelligencePage() {
@@ -9,12 +8,9 @@ export default function CompetitorIntelligencePage() {
       <PageHeader
         eyebrow="公开价格人工管理"
         title="竞品价格库"
-        description="这里用于管理你手动整理或导入的竞品公开价格，并做基础价格对比。当前只处理公开价格数据，不做自动爬虫，不采集手机号、微信号、私信和客户隐私。"
+        description="这里用于管理手动整理或导入的竞品公开价格。当前不做自动采集，不做爬虫，不采集客户隐私，也不会自动调整雅正价格。"
       />
-      <div className="space-y-6">
-        <CompetitorPriceAnalysisBoard />
-        <CompetitorPriceLibrary />
-      </div>
+      <CompetitorPriceLibraryRefined />
     </AppShell>
   );
 }
