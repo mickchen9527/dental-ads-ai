@@ -35,6 +35,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/ekanya-analysis", label: "e看牙回流分析" },
       { href: "/roi-analysis", label: "闭环 ROI 分析" },
       { href: "/project-analysis", label: "项目分析" },
+      { href: "/reports", label: "多平台周报" },
     ],
   },
   {
