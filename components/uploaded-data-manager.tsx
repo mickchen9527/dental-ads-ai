@@ -25,20 +25,32 @@ type UploadedDataManagerProps = {
   rows?: string[][];
 };
 
-const headers = [
-  "文件名",
-  "平台",
-  "数据类型",
-  "数据周期",
-  "上传时间",
-  "解析状态",
-  "是否参与分析",
-  "备注",
-  "操作",
+type PlatformFilter = "all" | "meituan" | "ekanya" | "douyin" | "gdt" | "amap" | "projectPrice" | "other";
+type StatusFilter = "all" | "saved" | "parsed" | "failed" | "inactive";
+
+const platformOptions: Array<{ label: string; value: PlatformFilter }> = [
+  { label: "全部", value: "all" },
+  { label: "美团", value: "meituan" },
+  { label: "e看牙", value: "ekanya" },
+  { label: "抖音", value: "douyin" },
+  { label: "腾讯广点通", value: "gdt" },
+  { label: "高德", value: "amap" },
+  { label: "项目价格", value: "projectPrice" },
+  { label: "其他", value: "other" },
 ];
 
+const statusOptions: Array<{ label: string; value: StatusFilter }> = [
+  { label: "全部", value: "all" },
+  { label: "已保存", value: "saved" },
+  { label: "已解析", value: "parsed" },
+  { label: "解析失败", value: "failed" },
+  { label: "已停用", value: "inactive" },
+];
+
+const headers = ["平台", "数据类型", "文件名", "周期", "上传时间", "解析状态", "是否启用", "行数", "备注", "操作"];
+
 export function UploadedDataManager({
-  title = "已上传数据",
+  title = "已上传数据管理",
   description = "这里查看以前上传过的文件。当前读取 uploaded_files 的真实上传记录。",
   platform,
   dataType,
@@ -48,8 +60,9 @@ export function UploadedDataManager({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [platformFilter, setPlatformFilter] = useState(platform ?? "");
-  const [dataTypeFilter, setDataTypeFilter] = useState(dataType ?? "");
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [keyword, setKeyword] = useState("");
   const [downloadingId, setDownloadingId] = useState("");
   const [updatingId, setUpdatingId] = useState("");
   const [deletingId, setDeletingId] = useState("");
@@ -57,10 +70,48 @@ export function UploadedDataManager({
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-    if (platformFilter.trim()) params.set("platform", platformFilter.trim());
-    if (dataTypeFilter.trim()) params.set("dataType", dataTypeFilter.trim());
+    if (platform?.trim()) params.set("platform", platform.trim());
+    if (dataType?.trim()) params.set("dataType", dataType.trim());
     return params.toString();
-  }, [dataTypeFilter, platformFilter]);
+  }, [dataType, platform]);
+
+  const filteredRecords = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return records.filter((record) => {
+      const category = getPlatformCategory(record);
+      if (platformFilter !== "all" && category !== platformFilter) return false;
+
+      if (statusFilter === "inactive" && record.is_active !== false) return false;
+      if (statusFilter !== "all" && statusFilter !== "inactive") {
+        if (record.is_active === false) return false;
+        if (record.parse_status !== statusFilter) return false;
+      }
+
+      if (!normalizedKeyword) return true;
+
+      const searchableText = [
+        record.original_file_name,
+        record.platform,
+        record.data_type,
+        record.notes,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedKeyword);
+    });
+  }, [keyword, platformFilter, records, statusFilter]);
+
+  const stats = useMemo(() => {
+    return {
+      total: filteredRecords.length,
+      parsed: filteredRecords.filter((record) => record.parse_status === "parsed" && record.is_active !== false).length,
+      failed: filteredRecords.filter((record) => record.parse_status === "failed" && record.is_active !== false).length,
+      inactive: filteredRecords.filter((record) => record.is_active === false).length,
+    };
+  }, [filteredRecords]);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -232,38 +283,93 @@ export function UploadedDataManager({
           <h3 className="text-base font-semibold text-slate-950">{title}</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
           <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold leading-6 text-amber-900">
-            上传错文件时，优先用停用：不参与分析，但保留记录和原文件。只有测试文件、重复上传、明显传错时，才建议删除。V1.6.3 以后如果文件已经解析，还需要同步清理或停用解析数据。
+            上传错优先停用，停用后不参与分析但保留记录；测试文件、重复文件或明显传错时再删除。
           </p>
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            当前已支持解析美团、e看牙、抖音、腾讯和高德推广汇总/行为/线索数据。高德线索数据用于看高德是否带来真实咨询客户；后续会进入多平台统一看板。
+            完整上传记录只在数据上传页管理，其他分析页面只读取已解析数据。V1.6.3 以后，如果文件已经解析出明细数据，删除/停用时还需要同步处理解析数据。
           </p>
         </div>
-        <button
-          className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
-          type="button"
-          onClick={() => void loadRecords()}
-        >
-          刷新记录
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={filteredRecords.length === 0}
+            type="button"
+            onClick={() => downloadRecordsCsv(filteredRecords)}
+          >
+            下载上传记录 CSV
+          </button>
+          <button
+            className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
+            type="button"
+            onClick={() => void loadRecords()}
+          >
+            刷新记录
+          </button>
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <input
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-          placeholder="按平台筛选，例如：美团"
-          value={platformFilter}
-          onChange={(event) => setPlatformFilter(event.target.value)}
-        />
-        <input
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-          placeholder="按数据类型筛选，例如：美团推广汇总数据"
-          value={dataTypeFilter}
-          onChange={(event) => setDataTypeFilter(event.target.value)}
-        />
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <StatCard label="当前筛选记录数" value={stats.total} />
+        <StatCard label="已解析" value={stats.parsed} />
+        <StatCard label="解析失败" value={stats.failed} />
+        <StatCard label="已停用" value={stats.inactive} />
       </div>
+
+      <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-800">平台分类</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {platformOptions.map((option) => (
+              <button
+                key={option.value}
+                className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${
+                  platformFilter === option.value
+                    ? "border-cyan-200 bg-cyan-50 text-cyan-800"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
+                type="button"
+                onClick={() => setPlatformFilter(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <p className="text-sm font-semibold text-slate-800">解析状态</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {statusOptions.map((option) => (
+              <button
+                key={option.value}
+                className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${
+                  statusFilter === option.value
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
+                type="button"
+                onClick={() => setStatusFilter(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="mt-4 block text-sm font-semibold text-slate-800">
+          关键词搜索
+          <input
+            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+            placeholder="搜索文件名、平台或数据类型"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+          />
+        </label>
+      </div>
+
       {filters?.length ? (
         <p className="mt-2 text-xs leading-5 text-slate-500">
-          旧筛选项已保留为页面提示：{filters.join("、")}。当前真实记录先支持按平台和数据类型筛选。
+          页面提示筛选项：{filters.join("、")}。当前文件管理中心使用平台、解析状态和关键词搜索来筛选真实上传记录。
         </p>
       ) : null}
 
@@ -279,78 +385,79 @@ export function UploadedDataManager({
         </div>
       ) : null}
 
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[1120px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
+      <div className="mt-4 max-h-[560px] overflow-auto rounded-md border border-slate-200">
+        <table className="w-full min-w-[1280px] border-collapse text-sm">
+          <thead className="sticky top-0 z-10 bg-slate-100 text-left text-xs font-semibold text-slate-600">
             <tr>
               {headers.map((header) => (
                 <th key={header} className="px-4 py-3">{header}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {records.map((record) => {
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {filteredRecords.map((record) => {
               const isActive = Boolean(record.is_active);
               const parseConfig = isActive ? getParseConfig(record) : null;
               const parseButtonText = record.parse_status === "parsed" ? "重新解析" : "解析";
 
               return (
-              <tr key={record.id} className={isActive ? "" : "bg-slate-50 opacity-70"}>
-                <td className="px-4 py-3 font-semibold text-slate-950">
-                  {record.original_file_name ?? "-"}
-                  {!isActive ? (
-                    <span className="ml-2 rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-600">
-                      已停用
-                    </span>
-                  ) : null}
-                </td>
-                <td className="px-4 py-3 text-slate-700">{record.platform ?? "-"}</td>
-                <td className="px-4 py-3 text-slate-700">{record.data_type ?? "-"}</td>
-                <td className="px-4 py-3 text-slate-700">{formatPeriod(record)}</td>
-                <td className="px-4 py-3 text-slate-700">{formatDateTime(record.uploaded_at)}</td>
-                <td className="px-4 py-3 text-slate-700">{formatParseStatus(record.parse_status)}</td>
-                <td className="px-4 py-3 text-slate-700">{isActive ? "是" : "否，已停用"}</td>
-                <td className="px-4 py-3 text-slate-700">{record.notes || "-"}</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    {parseConfig ? (
-                      <button
-                        className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={parsingId === record.id}
-                        type="button"
-                        onClick={() => void parseUploadRecord(record)}
-                        title={parseConfig.label}
-                      >
-                        {parsingId === record.id ? "解析中" : parseButtonText}
-                      </button>
+                <tr key={record.id} className={isActive ? "" : "bg-slate-50 opacity-70"}>
+                  <td className="px-4 py-3 text-slate-700">{record.platform ?? "-"}</td>
+                  <td className="px-4 py-3 text-slate-700">{record.data_type ?? "-"}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-950">
+                    {record.original_file_name ?? "-"}
+                    {!isActive ? (
+                      <span className="ml-2 rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-600">
+                        已停用
+                      </span>
                     ) : null}
-                    <button
-                      className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={downloadingId === record.id}
-                      type="button"
-                      onClick={() => void downloadFile(record.id)}
-                    >
-                      {downloadingId === record.id ? "生成中" : "下载原文件"}
-                    </button>
-                    <button
-                      className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={updatingId === record.id}
-                      type="button"
-                      onClick={() => void toggleActive(record)}
-                    >
-                      {updatingId === record.id ? "处理中" : isActive ? "停用" : "启用"}
-                    </button>
-                    <button
-                      className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={deletingId === record.id}
-                      type="button"
-                      onClick={() => void deleteRecord(record)}
-                    >
-                      {deletingId === record.id ? "删除中" : "删除"}
-                    </button>
-                  </div>
-                </td>
-              </tr>
+                  </td>
+                  <td className="px-4 py-3 text-slate-700">{formatPeriod(record)}</td>
+                  <td className="px-4 py-3 text-slate-700">{formatDateTime(record.uploaded_at)}</td>
+                  <td className="px-4 py-3 text-slate-700">{formatParseStatus(record.parse_status)}</td>
+                  <td className="px-4 py-3 text-slate-700">{isActive ? "是" : "否，已停用"}</td>
+                  <td className="px-4 py-3 text-slate-700">{record.row_count ?? "-"}</td>
+                  <td className="px-4 py-3 text-slate-700">{record.notes || "-"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {parseConfig ? (
+                        <button
+                          className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={parsingId === record.id}
+                          type="button"
+                          onClick={() => void parseUploadRecord(record)}
+                          title={parseConfig.label}
+                        >
+                          {parsingId === record.id ? "解析中" : parseButtonText}
+                        </button>
+                      ) : null}
+                      <button
+                        className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={downloadingId === record.id}
+                        type="button"
+                        onClick={() => void downloadFile(record.id)}
+                      >
+                        {downloadingId === record.id ? "生成中" : "下载原文件"}
+                      </button>
+                      <button
+                        className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={updatingId === record.id}
+                        type="button"
+                        onClick={() => void toggleActive(record)}
+                      >
+                        {updatingId === record.id ? "处理中" : isActive ? "停用" : "启用"}
+                      </button>
+                      <button
+                        className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={deletingId === record.id}
+                        type="button"
+                        onClick={() => void deleteRecord(record)}
+                      >
+                        {deletingId === record.id ? "删除中" : "删除"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               );
             })}
           </tbody>
@@ -359,12 +466,27 @@ export function UploadedDataManager({
 
       {!loading && records.length === 0 ? (
         <p className="mt-4 rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-          还没有读取到上传记录。请先在数据上传页上传文件，或检查筛选条件是否过窄。
+          还没有上传记录。请先在上方选择平台和数据类型上传文件。
+        </p>
+      ) : null}
+
+      {!loading && records.length > 0 && filteredRecords.length === 0 ? (
+        <p className="mt-4 rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+          当前筛选条件下没有上传记录，可以调整平台、状态或搜索关键词。
         </p>
       ) : null}
 
       {loading ? <p className="mt-4 text-sm font-semibold text-slate-500">正在读取真实上传记录...</p> : null}
     </section>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-slate-950">{value.toLocaleString("zh-CN")}</p>
+    </div>
   );
 }
 
@@ -387,11 +509,14 @@ function formatPeriod(record: UploadedFileRecord) {
 function formatDateTime(value: string | null) {
   if (!value) return "-";
 
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
   return new Intl.DateTimeFormat("zh-CN", {
     dateStyle: "short",
-    timeStyle: "short",
     hour12: false,
-  }).format(new Date(value));
+    timeStyle: "short",
+  }).format(date);
 }
 
 function formatParseStatus(status: string | null) {
@@ -401,55 +526,95 @@ function formatParseStatus(status: string | null) {
   return status ?? "-";
 }
 
+function getPlatformCategory(record: UploadedFileRecord): PlatformFilter {
+  const text = `${record.platform ?? ""} ${record.data_type ?? ""}`.toLowerCase();
+
+  if (text.includes("美团") || text.includes("点评") || text.includes("meituan") || text.includes("dianping")) return "meituan";
+  if (text.includes("e看牙") || text.includes("ekanya")) return "ekanya";
+  if (text.includes("抖音") || text.includes("douyin")) return "douyin";
+  if (text.includes("腾讯") || text.includes("广点通") || text.includes("gdt")) return "gdt";
+  if (text.includes("高德") || text.includes("amap")) return "amap";
+  if (text.includes("项目价格") || text.includes("价格表") || text.includes("project-pricing") || text.includes("project_price")) return "projectPrice";
+  return "other";
+}
+
+function downloadRecordsCsv(records: UploadedFileRecord[]) {
+  const rows = [
+    ["平台", "数据类型", "文件名", "周期开始", "周期结束", "上传时间", "解析状态", "是否启用", "行数", "备注"],
+    ...records.map((record) => [
+      record.platform ?? "",
+      record.data_type ?? "",
+      record.original_file_name ?? "",
+      record.period_start ?? "",
+      record.period_end ?? "",
+      record.uploaded_at ?? "",
+      formatParseStatus(record.parse_status),
+      record.is_active === false ? "否，已停用" : "是",
+      record.row_count === null || record.row_count === undefined ? "" : String(record.row_count),
+      record.notes ?? "",
+    ]),
+  ];
+
+  const csv = rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
+  const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `uploaded-files-${formatDateForFile(new Date())}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function escapeCsvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function formatDateForFile(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function getParseConfig(record: UploadedFileRecord) {
-  if (record.data_type === "美团推广汇总数据" || record.data_type === "meituan-summary") {
+  if (isDataType(record, ["美团推广汇总数据", "meituan-summary"])) {
     return {
       endpoint: "/api/uploads/parse-meituan-summary",
       label: "美团推广汇总数据",
     };
   }
 
-  if (record.data_type === "美团关键词数据" || record.data_type === "meituan-keywords") {
+  if (isDataType(record, ["美团关键词数据", "meituan-keywords"])) {
     return {
       endpoint: "/api/uploads/parse-meituan-keywords",
       label: "美团关键词数据",
     };
   }
 
-  if (record.data_type === "e看牙后端回流数据" || record.data_type === "ekanya-backflow") {
+  if (isDataType(record, ["e看牙后端回流数据", "ekanya-backflow"])) {
     return {
       endpoint: "/api/uploads/parse-ekanya-backflow",
       label: "e看牙后端回流数据",
     };
   }
-  if (
-    record.data_type === "抖音计划汇总数据" ||
-    record.data_type === "抖音广告计划汇总数据" ||
-    record.data_type === "douyin-plan-summary" ||
-    record.data_type === "douyin-ad-plan-summary"
-  ) {
+
+  if (isDataType(record, ["抖音计划汇总数据", "抖音广告计划汇总数据", "douyin-plan-summary", "douyin-ad-plan-summary"])) {
     return {
       endpoint: "/api/uploads/parse-douyin-plan-summary",
       label: "抖音计划汇总数据",
     };
   }
 
-  if (
-    record.data_type === "\u6296\u97f3\u7d20\u6750/\u521b\u610f\u6570\u636e" ||
-    record.data_type === "\u6296\u97f3\u7d20\u6750 / \u521b\u610f\u6570\u636e" ||
-    record.data_type === "douyin-creatives"
-  ) {
+  if (isDataType(record, ["抖音素材/创意数据", "抖音素材 / 创意数据", "douyin-creatives"])) {
     return {
       endpoint: "/api/uploads/parse-douyin-creatives",
-      label: "\u6296\u97f3\u7d20\u6750/\u521b\u610f\u6570\u636e",
+      label: "抖音素材/创意数据",
     };
   }
 
-  if (
-    record.data_type === "抖音表单/私信线索数据" ||
-    record.data_type === "抖音表单 / 私信线索数据" ||
-    record.data_type === "douyin-leads"
-  ) {
+  if (isDataType(record, ["抖音表单/私信线索数据", "抖音表单 / 私信线索数据", "douyin-leads"])) {
     return {
       endpoint: "/api/uploads/parse-douyin-leads",
       label: "抖音表单/私信线索数据",
@@ -457,15 +622,17 @@ function getParseConfig(record: UploadedFileRecord) {
   }
 
   if (
-    record.data_type === "腾讯广点通计划汇总数据" ||
-    record.data_type === "腾讯计划汇总数据" ||
-    record.data_type === "广点通计划汇总数据" ||
-    record.data_type === "腾讯账户/计划汇总数据" ||
-    record.data_type === "腾讯广告计划汇总数据" ||
-    record.data_type === "腾讯信息流计划汇总数据" ||
-    record.data_type === "腾讯广点通账户/计划汇总数据" ||
-    record.data_type === "广点通账户/计划汇总数据" ||
-    record.data_type === "gdt-plan-summary"
+    isDataType(record, [
+      "腾讯广点通计划汇总数据",
+      "腾讯计划汇总数据",
+      "广点通计划汇总数据",
+      "腾讯账户/计划汇总数据",
+      "腾讯广告计划汇总数据",
+      "腾讯信息流计划汇总数据",
+      "腾讯广点通账户/计划汇总数据",
+      "广点通账户/计划汇总数据",
+      "gdt-plan-summary",
+    ])
   ) {
     return {
       endpoint: "/api/uploads/parse-gdt-plan-summary",
@@ -474,13 +641,15 @@ function getParseConfig(record: UploadedFileRecord) {
   }
 
   if (
-    record.data_type === "腾讯广告组/创意数据" ||
-    record.data_type === "腾讯广告组 / 创意数据" ||
-    record.data_type === "腾讯广告组数据" ||
-    record.data_type === "腾讯创意数据" ||
-    record.data_type === "广点通广告组/创意数据" ||
-    record.data_type === "广点通广告组 / 创意数据" ||
-    record.data_type === "gdt-creatives"
+    isDataType(record, [
+      "腾讯广告组/创意数据",
+      "腾讯广告组 / 创意数据",
+      "腾讯广告组数据",
+      "腾讯创意数据",
+      "广点通广告组/创意数据",
+      "广点通广告组 / 创意数据",
+      "gdt-creatives",
+    ])
   ) {
     return {
       endpoint: "/api/uploads/parse-gdt-creatives",
@@ -489,13 +658,15 @@ function getParseConfig(record: UploadedFileRecord) {
   }
 
   if (
-    record.data_type === "腾讯表单/电话线索数据" ||
-    record.data_type === "腾讯表单 / 电话线索数据" ||
-    record.data_type === "腾讯线索数据" ||
-    record.data_type === "广点通线索数据" ||
-    record.data_type === "腾讯表单线索数据" ||
-    record.data_type === "腾讯电话线索数据" ||
-    record.data_type === "gdt-leads"
+    isDataType(record, [
+      "腾讯表单/电话线索数据",
+      "腾讯表单 / 电话线索数据",
+      "腾讯线索数据",
+      "广点通线索数据",
+      "腾讯表单线索数据",
+      "腾讯电话线索数据",
+      "gdt-leads",
+    ])
   ) {
     return {
       endpoint: "/api/uploads/parse-gdt-leads",
@@ -503,12 +674,7 @@ function getParseConfig(record: UploadedFileRecord) {
     };
   }
 
-  if (
-    record.data_type === "高德推广汇总数据" ||
-    record.data_type === "高德广告汇总数据" ||
-    record.data_type === "高德投放汇总数据" ||
-    record.data_type === "amap-summary"
-  ) {
+  if (isDataType(record, ["高德推广汇总数据", "高德广告汇总数据", "高德投放汇总数据", "amap-summary"])) {
     return {
       endpoint: "/api/uploads/parse-amap-summary",
       label: "高德推广汇总数据",
@@ -516,12 +682,14 @@ function getParseConfig(record: UploadedFileRecord) {
   }
 
   if (
-    record.data_type === "高德电话/导航/门店访问数据" ||
-    record.data_type === "高德电话 / 导航 / 门店访问数据" ||
-    record.data_type === "高德行为明细数据" ||
-    record.data_type === "高德门店访问数据" ||
-    record.data_type === "高德电话导航数据" ||
-    record.data_type === "amap-actions"
+    isDataType(record, [
+      "高德电话/导航/门店访问数据",
+      "高德电话 / 导航 / 门店访问数据",
+      "高德行为明细数据",
+      "高德门店访问数据",
+      "高德电话导航数据",
+      "amap-actions",
+    ])
   ) {
     return {
       endpoint: "/api/uploads/parse-amap-actions",
@@ -529,13 +697,7 @@ function getParseConfig(record: UploadedFileRecord) {
     };
   }
 
-  if (
-    record.data_type === "高德线索数据" ||
-    record.data_type === "高德留资数据" ||
-    record.data_type === "高德咨询线索数据" ||
-    record.data_type === "高德客户线索数据" ||
-    record.data_type === "amap-leads"
-  ) {
+  if (isDataType(record, ["高德线索数据", "高德留资数据", "高德咨询线索数据", "高德客户线索数据", "amap-leads"])) {
     return {
       endpoint: "/api/uploads/parse-amap-leads",
       label: "高德线索数据",
@@ -543,4 +705,8 @@ function getParseConfig(record: UploadedFileRecord) {
   }
 
   return null;
+}
+
+function isDataType(record: UploadedFileRecord, values: string[]) {
+  return values.includes(record.data_type ?? "");
 }
