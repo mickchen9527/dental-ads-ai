@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  buildRecommendationThresholds,
   getPlatformRuleProfile,
   getSampleTooSmallMessage,
   hasEnoughTrafficSample,
@@ -8,6 +9,10 @@ import {
   isLowPaidRoi,
   isLowPhoneRate,
   isRiskyKeywordSpend,
+  isTargetSettingKey,
+  targetSettingDefinitions,
+  type RecommendationThresholdSettings,
+  type TargetSettingKey,
 } from "@/lib/recommendation-rules";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -196,6 +201,7 @@ export async function GET(request: Request) {
   const range = resolveDateRange(searchParams.get("startDate"), searchParams.get("endDate"));
   const requestedDateType = searchParams.get("dateType") ?? "source_date";
   const dateType = supportedDateTypes.has(requestedDateType) ? requestedDateType : "source_date";
+  const targetSettings = await fetchTargetSettings();
 
   const uploadedResult = await supabase
     .from("uploaded_files")
@@ -382,6 +388,7 @@ export async function GET(request: Request) {
     keywordTop,
     ekanyaSummary,
     platformSummaries,
+    thresholds: targetSettings.thresholds,
   });
 
   return NextResponse.json({
@@ -396,6 +403,10 @@ export async function GET(request: Request) {
     ekanyaSummary,
     platformSummaries,
     dataGaps,
+    targetSettings: {
+      source: targetSettings.source,
+      values: targetSettings.thresholds,
+    },
     recommendations,
   });
 }
@@ -431,6 +442,49 @@ async function fetchRows<T>(
   }
 
   return { data: (result.data ?? []) as T[], error: null };
+}
+
+async function fetchTargetSettings(): Promise<{
+  source: "cloud" | "default";
+  thresholds: RecommendationThresholdSettings;
+}> {
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) {
+    return { source: "default", thresholds: buildRecommendationThresholds() };
+  }
+
+  const result = await supabase
+    .from("target_settings")
+    .select("key, value")
+    .in(
+      "key",
+      targetSettingDefinitions.map((definition) => definition.key),
+    );
+
+  if (result.error) {
+    console.error("[api/recommendations/today] target_settings query failed", {
+      code: result.error.code,
+      message: result.error.message,
+      details: result.error.details,
+      hint: result.error.hint,
+    });
+    return { source: "default", thresholds: buildRecommendationThresholds() };
+  }
+
+  const overrides: Partial<Record<TargetSettingKey, number>> = {};
+  (result.data ?? []).forEach((row) => {
+    const key = typeof row.key === "string" ? row.key : "";
+    if (!isTargetSettingKey(key)) return;
+    const value = typeof row.value === "number" ? row.value : Number(row.value);
+    if (Number.isFinite(value) && value >= 0) {
+      overrides[key] = value;
+    }
+  });
+
+  return {
+    source: Object.keys(overrides).length > 0 ? "cloud" : "default",
+    thresholds: buildRecommendationThresholds(overrides),
+  };
 }
 
 function getParsedFileIds(files: UploadedFileRow[], targetTypes: string[]) {
@@ -650,6 +704,7 @@ function buildRecommendations({
   keywordTop,
   ekanyaSummary,
   platformSummaries,
+  thresholds,
 }: {
   uploadCompleteness: {
     hasMeituanSummary: boolean;
@@ -664,6 +719,7 @@ function buildRecommendations({
   keywordTop: ReturnType<typeof summarizeKeywords>;
   ekanyaSummary: EkanyaSummary;
   platformSummaries: Array<FrontPlatformSummary & { ekanya: EkanyaSummary }>;
+  thresholds: RecommendationThresholdSettings;
 }) {
   const recommendations: TodayRecommendation[] = [];
 
@@ -729,13 +785,13 @@ function buildRecommendations({
 
   const meituan = platformSummaries.find((platform) => platform.key === "meituan");
   if (meituan) {
-    recommendations.push(...buildMeituanRecommendations(meituan, meituanSummary, keywordTop, ekanyaSummary));
+    recommendations.push(...buildMeituanRecommendations(meituan, meituanSummary, keywordTop, ekanyaSummary, thresholds));
   }
 
   platformSummaries
     .filter((platform) => platform.key !== "meituan")
     .forEach((platform) => {
-      recommendations.push(...buildAdPlatformRecommendations({ front: platform, ekanya: platform.ekanya }));
+      recommendations.push(...buildAdPlatformRecommendations({ front: platform, ekanya: platform.ekanya }, thresholds));
     });
 
   if (!uploadCompleteness.hasAnyParsedData) {
@@ -766,6 +822,7 @@ function buildMeituanRecommendations(
   meituanSummary: ReturnType<typeof summarizeMeituanSummary>,
   keywordTop: ReturnType<typeof summarizeKeywords>,
   ekanyaSummary: EkanyaSummary,
+  thresholds: RecommendationThresholdSettings,
 ) {
   const recommendations: TodayRecommendation[] = [];
 
@@ -789,7 +846,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  if (hasEnoughTrafficSample(meituanSummary.totalClicks) && isLowConsultationRate(meituanSummary.consultRate)) {
+  if (hasEnoughTrafficSample(meituanSummary.totalClicks, thresholds) && isLowConsultationRate(meituanSummary.consultRate, thresholds)) {
     recommendations.push(makeRecommendation({
       id: "meituan-clicks-low-consult",
       title: "点击有了，但在线咨询偏少",
@@ -809,7 +866,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  if (hasEnoughTrafficSample(meituanSummary.totalClicks) && isLowPhoneRate(meituanSummary.phoneRate)) {
+  if (hasEnoughTrafficSample(meituanSummary.totalClicks, thresholds) && isLowPhoneRate(meituanSummary.phoneRate, thresholds)) {
     recommendations.push(makeRecommendation({
       id: "meituan-clicks-low-phone",
       title: "点击后查看电话的人偏少",
@@ -849,7 +906,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  if (ekanyaSummary.paidAmount > 0 && isLowPaidRoi(ekanyaSummary.paidRoi)) {
+  if (ekanyaSummary.paidAmount > 0 && isLowPaidRoi(ekanyaSummary.paidRoi, thresholds)) {
     recommendations.push(makeRecommendation({
       id: "meituan-paid-roi-low",
       title: "有成交和实收，但暂时低于 1:3",
@@ -869,7 +926,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  if (isHealthyPaidRoi(ekanyaSummary.paidRoi)) {
+  if (isHealthyPaidRoi(ekanyaSummary.paidRoi, thresholds)) {
     recommendations.push(makeRecommendation({
       id: "meituan-paid-roi-healthy",
       title: "初步实收 ROI 已达到 1:3 参考线",
@@ -889,7 +946,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  const riskyKeywords = keywordTop.filter((row) => isRiskyKeywordSpend(row.spend, row.clicks, row.actionCount)).slice(0, 3);
+  const riskyKeywords = keywordTop.filter((row) => isRiskyKeywordSpend(row.spend, row.clicks, row.actionCount, thresholds)).slice(0, 3);
   if (riskyKeywords.length > 0) {
     recommendations.push(makeRecommendation({
       id: "meituan-high-spend-keywords",
@@ -917,13 +974,13 @@ function buildMeituanRecommendations(
   return recommendations;
 }
 
-function buildAdPlatformRecommendations({ front, ekanya }: PlatformRecommendationInput) {
+function buildAdPlatformRecommendations({ front, ekanya }: PlatformRecommendationInput, thresholds: RecommendationThresholdSettings) {
   const recommendations: TodayRecommendation[] = [];
 
   if (!front.hasData) return recommendations;
   const profile = getPlatformRuleProfile(front.key);
 
-  if (front.spend > 0 && front.clicks < 10) {
+  if (front.spend > 0 && front.clicks < Math.max(10, Math.floor(thresholds.minimumClicks / 3))) {
     recommendations.push(makeRecommendation({
       id: `${front.key}-low-clicks`,
       title: `${front.platform}有花费但点击偏少`,
@@ -943,7 +1000,7 @@ function buildAdPlatformRecommendations({ front, ekanya }: PlatformRecommendatio
     }));
   }
 
-  if (hasEnoughTrafficSample(front.clicks) && front.actionCount === 0) {
+  if (hasEnoughTrafficSample(front.clicks, thresholds) && front.actionCount === 0) {
     recommendations.push(makeRecommendation({
       id: `${front.key}-clicks-no-actions`,
       title: `${front.platform}点击有了，但线索/动作偏少`,
@@ -1003,7 +1060,7 @@ function buildAdPlatformRecommendations({ front, ekanya }: PlatformRecommendatio
     }));
   }
 
-  if (front.clicks > 0 && !hasEnoughTrafficSample(front.clicks) && recommendations.length === 0) {
+  if (front.clicks > 0 && !hasEnoughTrafficSample(front.clicks, thresholds) && recommendations.length === 0) {
     recommendations.push(makeObservationRecommendation(front, profile?.weakDataMessage ?? getSampleTooSmallMessage(front.platform)));
   }
 

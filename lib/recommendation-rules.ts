@@ -98,6 +98,98 @@ export const defaultRecommendationThresholds = {
   },
 } as const;
 
+export type TargetSettingKey =
+  | "minimumClicks"
+  | "lowConsultationRate"
+  | "lowPhoneRate"
+  | "lowOrderRate"
+  | "lowRoi"
+  | "highSpendKeywordCost"
+  | "highSpendKeywordClicks";
+
+export type TargetSettingDefinition = {
+  key: TargetSettingKey;
+  label: string;
+  defaultValue: number;
+  unit: string;
+  description: string;
+};
+
+export type RecommendationThresholdSettings = Record<TargetSettingKey, number>;
+
+export const targetSettingDefinitions: TargetSettingDefinition[] = [
+  {
+    key: "minimumClicks",
+    label: "最小点击样本量",
+    defaultValue: defaultRecommendationThresholds.sample.minClicksForTrafficJudgment,
+    unit: "次",
+    description: "低于这个点击量时，只提示继续观察，不下强结论。",
+  },
+  {
+    key: "lowConsultationRate",
+    label: "咨询率偏低线",
+    defaultValue: defaultRecommendationThresholds.rate.lowConsultationRate,
+    unit: "%",
+    description: "低于这条线时，提示页面承接或咨询入口可能偏弱。",
+  },
+  {
+    key: "lowPhoneRate",
+    label: "电话率偏低线",
+    defaultValue: defaultRecommendationThresholds.rate.lowPhoneRate,
+    unit: "%",
+    description: "低于这条线时，提示电话入口、信任感或到店意向可能偏弱。",
+  },
+  {
+    key: "lowOrderRate",
+    label: "订单转化率偏低线",
+    defaultValue: defaultRecommendationThresholds.rate.lowOrderRate,
+    unit: "%",
+    description: "低于这条线时，提示点击后下单或团购动作偏弱。",
+  },
+  {
+    key: "lowRoi",
+    label: "实收 ROI 参考线",
+    defaultValue: defaultRecommendationThresholds.roi.targetPaidRoi,
+    unit: "倍",
+    description: "当前用 1:3 作为参考线，不代表所有项目当周都必须达到。",
+  },
+  {
+    key: "highSpendKeywordCost",
+    label: "高花费关键词复核线",
+    defaultValue: defaultRecommendationThresholds.sample.minSpendForKeywordReview,
+    unit: "元",
+    description: "单个关键词花费超过这条线且没有动作时，提示人工复核。",
+  },
+  {
+    key: "highSpendKeywordClicks",
+    label: "高花费关键词最小点击数",
+    defaultValue: defaultRecommendationThresholds.sample.minClicksForKeywordReview,
+    unit: "次",
+    description: "关键词点击低于这个数量时，先不做强判断。",
+  },
+];
+
+export const defaultTargetSettings = Object.fromEntries(
+  targetSettingDefinitions.map((item) => [item.key, item.defaultValue]),
+) as RecommendationThresholdSettings;
+
+export function buildRecommendationThresholds(overrides?: Partial<Record<TargetSettingKey, number>>): RecommendationThresholdSettings {
+  const nextSettings = { ...defaultTargetSettings };
+
+  targetSettingDefinitions.forEach((definition) => {
+    const value = overrides?.[definition.key];
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      nextSettings[definition.key] = value;
+    }
+  });
+
+  return nextSettings;
+}
+
+export function isTargetSettingKey(value: string): value is TargetSettingKey {
+  return targetSettingDefinitions.some((definition) => definition.key === value);
+}
+
 export const platformRuleProfiles: PlatformRuleProfile[] = [
   {
     key: "meituan",
@@ -135,30 +227,35 @@ export function getPlatformRuleProfile(key: PlatformRuleProfile["key"]) {
   return platformRuleProfiles.find((profile) => profile.key === key);
 }
 
-export function hasEnoughTrafficSample(clicks: number) {
-  return clicks >= defaultRecommendationThresholds.sample.minClicksForTrafficJudgment;
+export function hasEnoughTrafficSample(clicks: number, thresholds: RecommendationThresholdSettings = defaultTargetSettings) {
+  return clicks >= thresholds.minimumClicks;
 }
 
-export function isLowConsultationRate(rate: number | null) {
-  return rate !== null && rate < defaultRecommendationThresholds.rate.lowConsultationRate;
+export function isLowConsultationRate(rate: number | null, thresholds: RecommendationThresholdSettings = defaultTargetSettings) {
+  return rate !== null && rate < thresholds.lowConsultationRate;
 }
 
-export function isLowPhoneRate(rate: number | null) {
-  return rate !== null && rate < defaultRecommendationThresholds.rate.lowPhoneRate;
+export function isLowPhoneRate(rate: number | null, thresholds: RecommendationThresholdSettings = defaultTargetSettings) {
+  return rate !== null && rate < thresholds.lowPhoneRate;
 }
 
-export function isLowPaidRoi(roi: number | null) {
-  return roi !== null && roi > 0 && roi < defaultRecommendationThresholds.roi.targetPaidRoi;
+export function isLowPaidRoi(roi: number | null, thresholds: RecommendationThresholdSettings = defaultTargetSettings) {
+  return roi !== null && roi > 0 && roi < thresholds.lowRoi;
 }
 
-export function isHealthyPaidRoi(roi: number | null) {
-  return roi !== null && roi >= defaultRecommendationThresholds.roi.targetPaidRoi;
+export function isHealthyPaidRoi(roi: number | null, thresholds: RecommendationThresholdSettings = defaultTargetSettings) {
+  return roi !== null && roi >= thresholds.lowRoi;
 }
 
-export function isRiskyKeywordSpend(spend: number, clicks: number, actionCount: number) {
+export function isRiskyKeywordSpend(
+  spend: number,
+  clicks: number,
+  actionCount: number,
+  thresholds: RecommendationThresholdSettings = defaultTargetSettings,
+) {
   return (
-    spend >= defaultRecommendationThresholds.sample.minSpendForKeywordReview &&
-    clicks >= defaultRecommendationThresholds.sample.minClicksForKeywordReview &&
+    spend >= thresholds.highSpendKeywordCost &&
+    clicks >= thresholds.highSpendKeywordClicks &&
     actionCount === 0
   );
 }
