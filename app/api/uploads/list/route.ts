@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     .from("uploaded_files")
     .select("id, platform, data_type, original_file_name, period_start, period_end, uploaded_at, row_count, parse_status, is_active, notes")
     .order("uploaded_at", { ascending: false })
-    .limit(50);
+    .limit(500);
 
   if (platform) {
     query = query.eq("platform", platform);

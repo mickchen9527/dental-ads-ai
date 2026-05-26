@@ -2,6 +2,20 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const bucketName = "uploaded-files";
+const parsedDataTables = [
+  "meituan_summary_rows",
+  "meituan_keyword_rows",
+  "ekanya_backflow_rows",
+  "douyin_plan_summary_rows",
+  "douyin_creative_rows",
+  "douyin_lead_rows",
+  "gdt_plan_summary_rows",
+  "gdt_creative_rows",
+  "gdt_lead_rows",
+  "amap_summary_rows",
+  "amap_action_rows",
+  "amap_lead_rows",
+];
 
 export async function POST(request: Request) {
   const supabase = getSupabaseAdminClient();
@@ -37,31 +51,57 @@ export async function POST(request: Request) {
   }
 
   const storagePath = fileResult.data.storage_path;
-  let storageWarning = "";
 
-  if (storagePath) {
-    const removeResult = await supabase.storage.from(bucketName).remove([storagePath]);
+  if (!storagePath) {
+    return NextResponse.json(
+      { message: "这条上传记录没有原文件路径，系统不会盲删。请检查上传记录后再处理。" },
+      { status: 400 },
+    );
+  }
 
-    if (removeResult.error) {
-      const error = removeResult.error as {
-        name?: string;
-        message?: string;
-        statusCode?: string | number;
-      };
+  for (const tableName of parsedDataTables) {
+    const parsedDeleteResult = await supabase.from(tableName).delete().eq("uploaded_file_id", id);
 
-      console.error("[api/uploads/delete] Supabase Storage remove failed", {
-        name: error.name,
-        message: error.message,
-        statusCode: error.statusCode,
-        bucket: bucketName,
-        storagePath,
+    if (parsedDeleteResult.error) {
+      console.error("[api/uploads/delete] parsed rows delete failed", {
+        tableName,
+        uploadedFileId: id,
+        code: parsedDeleteResult.error.code,
+        message: parsedDeleteResult.error.message,
+        details: parsedDeleteResult.error.details,
+        hint: parsedDeleteResult.error.hint,
       });
 
-      storageWarning = "Storage 原文件删除失败或文件不存在，系统会继续删除上传记录。";
+      return NextResponse.json(
+        { message: `删除解析明细失败：${tableName} 表清理失败，请检查表权限。` },
+        { status: 500 },
+      );
     }
   }
 
-  // V1.6.3 以后，如果该文件已经解析出明细数据，删除时还需要同步处理解析数据。
+  const removeResult = await supabase.storage.from(bucketName).remove([storagePath]);
+
+  if (removeResult.error) {
+    const error = removeResult.error as {
+      name?: string;
+      message?: string;
+      statusCode?: string | number;
+    };
+
+    console.error("[api/uploads/delete] Supabase Storage remove failed", {
+      name: error.name,
+      message: error.message,
+      statusCode: error.statusCode,
+      bucket: bucketName,
+      storagePath,
+    });
+
+    return NextResponse.json(
+      { message: `Supabase Storage 原文件删除失败：${error.message ?? "请检查 bucket 权限和文件路径。"}` },
+      { status: 500 },
+    );
+  }
+
   const deleteResult = await supabase.from("uploaded_files").delete().eq("id", id);
 
   if (deleteResult.error) {
@@ -76,8 +116,6 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    message: storageWarning
-      ? `上传记录已删除。${storageWarning}`
-      : "上传记录和 Supabase Storage 原文件已删除。",
+    message: "上传记录、Supabase Storage 原文件和对应解析明细已删除。",
   });
 }

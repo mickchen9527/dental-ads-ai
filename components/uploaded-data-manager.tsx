@@ -211,7 +211,7 @@ export function UploadedDataManager({
 
   async function deleteRecord(record: UploadedFileRecord) {
     const confirmed = window.confirm(
-      "确定删除这个上传文件吗？删除后会移除上传记录和 Supabase Storage 原文件。测试文件、重复文件、明显传错时才建议删除。",
+      "确定删除这个上传文件吗？删除后会移除上传记录、Supabase Storage 原文件和对应解析明细。测试文件、重复文件、明显传错时才建议删除。",
     );
 
     if (!confirmed) return;
@@ -286,7 +286,7 @@ export function UploadedDataManager({
             上传错优先停用，停用后不参与分析但保留记录；测试文件、重复文件或明显传错时再删除。
           </p>
           <p className="mt-2 rounded-md bg-cyan-50 px-3 py-2 text-sm font-semibold leading-6 text-cyan-800">
-            完整上传记录只在数据上传页管理，其他分析页面只读取已解析数据。V1.6.3 以后，如果文件已经解析出明细数据，删除/停用时还需要同步处理解析数据。
+            完整上传记录只在数据上传页管理，其他分析页面只读取已启用并已解析的数据。停用不会删除原文件和解析明细；删除会同步移除原文件和对应解析明细。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
