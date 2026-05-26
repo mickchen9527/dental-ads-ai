@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import { alertRows } from "@/lib/v12-static-data";
 
 const headers = ["异常指标", "异常幅度", "可能原因", "建议动作", "观察周期", "关注状态"];
@@ -12,6 +13,8 @@ export default function AlertsPage() {
         title="异常预警"
         description="展示当前经营数据中的异常信号。预警只提示风险，不会替你改预算、价格或广告。"
       />
+
+      <TemporaryWorkflowNotice kind="reserved" />
 
       <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">
         <table className="w-full min-w-[980px] border-collapse text-sm">

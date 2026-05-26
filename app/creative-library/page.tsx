@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import { creativeRows, pendingIntegrationNote } from "@/lib/v12-static-data";
 
 const headers = [
@@ -41,6 +42,8 @@ export default function CreativeLibraryPage() {
         title="素材库"
         description="素材好不好不能只看播放量和点击率，要结合有效咨询率、到院率、成交成本和实收 ROI。"
       />
+
+      <TemporaryWorkflowNotice kind="reserved" />
 
       <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
         {pendingIntegrationNote}

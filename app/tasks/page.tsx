@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import { taskGroups } from "@/lib/v12-static-data";
 
 export default function TasksPage() {
@@ -10,6 +11,8 @@ export default function TasksPage() {
         title="今日执行清单"
         description="把系统建议拆成可执行任务，所有动作仍需人工确认后执行。"
       />
+
+      <TemporaryWorkflowNotice kind="reserved" />
 
       <div className="space-y-6">
         {taskGroups.map((group) => (

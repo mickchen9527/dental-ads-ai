@@ -5,6 +5,7 @@ import { MetricCard } from "@/components/metric-card";
 import { PageHelpButton } from "@/components/page-help-button";
 import { PageHeader } from "@/components/page-header";
 import { QualityScoreCard } from "@/components/quality-score-card";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import {
   pendingDataSourceText,
   pendingScoringNotice,
@@ -95,6 +96,16 @@ const quickLinks = [
     title: "项目价格管理",
     description: "维护 e看牙系统价、平台展示价和项目状态。",
   },
+  {
+    href: "/competitor-intelligence",
+    title: "竞品价格库",
+    description: "管理人工整理或导入的竞品公开价格，不做自动采集，不采集隐私。",
+  },
+  {
+    href: "/targets",
+    title: "目标值设置",
+    description: "维护 CTR、咨询率、电话率、ROI 等判断参考线，统一建议口径。",
+  },
 ];
 
 const todayAnswers = [
@@ -159,6 +170,8 @@ export default function DashboardPage() {
           />
         }
       />
+
+      <TemporaryWorkflowNotice kind="example" />
 
       <section className="mb-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <article className="rounded-md border border-slate-200 bg-white p-4">

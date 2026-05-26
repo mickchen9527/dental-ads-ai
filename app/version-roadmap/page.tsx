@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 
 const versions: Array<[string, string[]]> = [
   ["V1.0 静态后台原型", ["搭建后台框架", "建立首页、上传页、分析页、建议页、设置页", "使用静态假数据", "不接数据库", "不接AI"]],
@@ -21,6 +22,8 @@ export default function VersionRoadmapPage() {
         title="版本路线说明"
         description="说明每个版本能做什么、不能做什么，避免误以为当前版本已经全自动化。"
       />
+
+      <TemporaryWorkflowNotice kind="reserved" />
 
       <section className="grid gap-4 lg:grid-cols-2">
         {versions.map(([version, items]) => (

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import { diagnosisNodes } from "@/lib/v12-static-data";
 
 const headers = ["问题位置", "诊断方向", "可能原因", "检查数据", "建议动作", "是否需要人工确认"];
@@ -12,6 +13,8 @@ export default function DiagnosisPage() {
         title="问题诊断中心"
         description="用诊断树定位经营问题发生在哪一段漏斗，先定位问题，再决定是否调预算、调素材或调价格。"
       />
+
+      <TemporaryWorkflowNotice kind="reserved" />
 
       <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">
         <table className="w-full min-w-[1100px] border-collapse text-sm">

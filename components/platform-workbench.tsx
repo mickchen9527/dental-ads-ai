@@ -3,6 +3,7 @@ import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { StorageNote } from "@/components/storage-note";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import type { PlatformWorkbenchData } from "@/lib/platform-workbench";
 
 type PlatformWorkbenchProps = {
@@ -66,6 +67,8 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
           />
         }
       />
+
+      <TemporaryWorkflowNotice kind="platform" />
 
       <section className="mb-6 rounded-md border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">

@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import { reviewRows, reviewSummary } from "@/lib/v12-static-data";
 
 const headers = ["日期", "系统建议", "是否执行", "执行动作", "执行后3天结果", "执行后7天结果", "是否有效", "复盘结论"];
@@ -13,6 +14,8 @@ export default function ReviewPage() {
         title="复盘中心"
         description="复盘系统建议是否真的有效，帮助后续优化投放规则和人工判断标准。"
       />
+
+      <TemporaryWorkflowNotice kind="reserved" />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         {reviewSummary.map(([label, value]) => (

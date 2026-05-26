@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import { qualityResult } from "@/lib/mock-data";
 import { formatPercent } from "@/lib/metrics";
 
@@ -12,6 +13,8 @@ export default function AiInsightsPage() {
         title="AI分析中心"
         description="AI只是解释层，核心指标先由规则引擎计算。当前页面为静态原型，不接 OpenAI API。"
       />
+
+      <TemporaryWorkflowNotice kind="ai" />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="分析周期" value="近7天" helper="用于经营判断的观察窗口" tone="cyan" />

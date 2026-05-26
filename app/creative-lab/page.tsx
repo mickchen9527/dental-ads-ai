@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { TemporaryWorkflowNotice } from "@/components/temporary-workflow-notice";
 import { pendingIntegrationNote, riskBoundaryNotes } from "@/lib/v12-static-data";
 
 const diagnosis = [
@@ -49,6 +50,8 @@ export default function CreativeLabPage() {
         title="素材生产中心"
         description="素材生产中心用于把投放数据问题转化为可拍摄、可测试的短视频/图文素材方案。当前 V1.2 只生成脚本、分镜、封面文案、视频提示词和测试计划，不直接生成真实视频，不自动发布广告。"
       />
+
+      <TemporaryWorkflowNotice kind="reserved" />
 
       <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
         <p>{pendingIntegrationNote}</p>
