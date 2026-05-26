@@ -3,6 +3,8 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+  --font-geist-sans: Arial, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  --font-geist-mono: Consolas, Menlo, Monaco, monospace;
 }
 
 @theme inline {
