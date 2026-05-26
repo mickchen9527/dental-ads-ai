@@ -1,4 +1,14 @@
 import { NextResponse } from "next/server";
+import {
+  getPlatformRuleProfile,
+  getSampleTooSmallMessage,
+  hasEnoughTrafficSample,
+  isHealthyPaidRoi,
+  isLowConsultationRate,
+  isLowPaidRoi,
+  isLowPhoneRate,
+  isRiskyKeywordSpend,
+} from "@/lib/recommendation-rules";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const supportedDateTypes = new Set(["source_date", "visit_date", "deal_date"]);
@@ -779,7 +789,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  if (meituanSummary.totalClicks >= 30 && (meituanSummary.consultRate ?? 0) < 0.03) {
+  if (hasEnoughTrafficSample(meituanSummary.totalClicks) && isLowConsultationRate(meituanSummary.consultRate)) {
     recommendations.push(makeRecommendation({
       id: "meituan-clicks-low-consult",
       title: "点击有了，但在线咨询偏少",
@@ -799,7 +809,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  if (meituanSummary.totalClicks >= 30 && (meituanSummary.phoneRate ?? 0) < 0.02) {
+  if (hasEnoughTrafficSample(meituanSummary.totalClicks) && isLowPhoneRate(meituanSummary.phoneRate)) {
     recommendations.push(makeRecommendation({
       id: "meituan-clicks-low-phone",
       title: "点击后查看电话的人偏少",
@@ -839,7 +849,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  if (ekanyaSummary.paidAmount > 0 && ekanyaSummary.paidRoi !== null && ekanyaSummary.paidRoi < 3) {
+  if (ekanyaSummary.paidAmount > 0 && isLowPaidRoi(ekanyaSummary.paidRoi)) {
     recommendations.push(makeRecommendation({
       id: "meituan-paid-roi-low",
       title: "有成交和实收，但暂时低于 1:3",
@@ -859,7 +869,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  if (ekanyaSummary.paidRoi !== null && ekanyaSummary.paidRoi >= 3) {
+  if (isHealthyPaidRoi(ekanyaSummary.paidRoi)) {
     recommendations.push(makeRecommendation({
       id: "meituan-paid-roi-healthy",
       title: "初步实收 ROI 已达到 1:3 参考线",
@@ -879,7 +889,7 @@ function buildMeituanRecommendations(
     }));
   }
 
-  const riskyKeywords = keywordTop.filter((row) => row.spend >= 300 && row.clicks >= 10 && row.actionCount === 0).slice(0, 3);
+  const riskyKeywords = keywordTop.filter((row) => isRiskyKeywordSpend(row.spend, row.clicks, row.actionCount)).slice(0, 3);
   if (riskyKeywords.length > 0) {
     recommendations.push(makeRecommendation({
       id: "meituan-high-spend-keywords",
@@ -911,6 +921,7 @@ function buildAdPlatformRecommendations({ front, ekanya }: PlatformRecommendatio
   const recommendations: TodayRecommendation[] = [];
 
   if (!front.hasData) return recommendations;
+  const profile = getPlatformRuleProfile(front.key);
 
   if (front.spend > 0 && front.clicks < 10) {
     recommendations.push(makeRecommendation({
@@ -932,7 +943,7 @@ function buildAdPlatformRecommendations({ front, ekanya }: PlatformRecommendatio
     }));
   }
 
-  if (front.clicks >= 30 && front.actionCount === 0) {
+  if (hasEnoughTrafficSample(front.clicks) && front.actionCount === 0) {
     recommendations.push(makeRecommendation({
       id: `${front.key}-clicks-no-actions`,
       title: `${front.platform}点击有了，但线索/动作偏少`,
@@ -990,6 +1001,10 @@ function buildAdPlatformRecommendations({ front, ekanya }: PlatformRecommendatio
       reviewMetrics: ["点击成本", "平台线索", "e看牙来源客户"],
       dataBasis: [`${front.key}_plan_rows`],
     }));
+  }
+
+  if (front.clicks > 0 && !hasEnoughTrafficSample(front.clicks) && recommendations.length === 0) {
+    recommendations.push(makeObservationRecommendation(front, profile?.weakDataMessage ?? getSampleTooSmallMessage(front.platform)));
   }
 
   if (ekanya.visitCount > 0 && ekanya.dealCount === 0) {
