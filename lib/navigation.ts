@@ -45,7 +45,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/templates", label: "模板中心" },
       { href: "/knowledge", label: "投放知识库" },
       { href: "/competitor-intelligence", label: "竞品情报" },
-      { href: "/creative-lab", label: "素材生产中心" },
     ],
   },
   {
