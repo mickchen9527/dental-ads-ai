@@ -22,9 +22,26 @@ const headers = [
   "备注",
 ];
 
+const recommendationActionLogStorageKey = "dental_ads_recommendation_action_logs_v1";
+
+type LocalRecommendationActionLog = {
+  id?: string;
+  recommendationId?: string;
+  actionType?: string;
+  platform?: string;
+  title?: string;
+  problemType?: string;
+  status?: string;
+  note?: string;
+  createdAt?: string;
+};
+
 export default function ActionLogsPage() {
   const [filter, setFilter] = useState("全部");
-  const filteredRows = actionLogRows.filter((row) => {
+  const [recommendationRows] = useState<string[][]>(() => readLocalRecommendationRows());
+
+  const rows = [...recommendationRows, ...actionLogRows];
+  const filteredRows = rows.filter((row) => {
     if (filter === "全部") return true;
     if (filter === "已执行") return row[6] === "已执行";
     if (filter === "未执行") return row[6] === "未执行";
@@ -68,6 +85,10 @@ export default function ActionLogsPage() {
         ))}
       </section>
 
+      <section className="mb-4 rounded-md border border-cyan-100 bg-cyan-50 p-4 text-sm leading-6 text-cyan-900">
+        今日总建议里的“采纳 / 继续观察 / 忽略”会先记录在本机浏览器里，并显示到这里。后续接 Supabase 操作记录表后，可以跨电脑保存。
+      </section>
+
       <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">
         <table className="w-full min-w-[1320px] border-collapse text-sm">
           <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
@@ -78,8 +99,8 @@ export default function ActionLogsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredRows.map((row) => (
-              <tr key={row.join("-")}>
+            {filteredRows.map((row, rowIndex) => (
+              <tr key={`${row.join("-")}-${rowIndex}`}>
                 {row.map((cell, index) => (
                   <td key={`${cell}-${index}`} className="px-4 py-3 text-slate-700">{cell}</td>
                 ))}
@@ -102,6 +123,60 @@ export default function ActionLogsPage() {
       </section>
     </AppShell>
   );
+}
+
+function readLocalRecommendationRows() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(recommendationActionLogStorageKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((item): item is LocalRecommendationActionLog => Boolean(item && typeof item === "object"))
+      .map((item) => {
+        const status = item.status ?? "已记录";
+        return [
+          formatLogDate(item.createdAt),
+          actionTypeLabel(item.actionType),
+          item.platform ?? "未填写",
+          "多平台建议",
+          item.problemType ?? "今日总建议",
+          item.title ?? "未命名建议",
+          status === "已采纳" ? "已执行" : "未执行",
+          status,
+          item.recommendationId ?? "本机记录",
+          "待复盘",
+          "待复盘",
+          status === "已采纳" ? "待复盘" : "未执行",
+          item.note ?? "来自今日总建议页面的本机操作记录。",
+        ];
+      });
+  } catch {
+    return [];
+  }
+}
+
+function actionTypeLabel(actionType?: string) {
+  if (actionType === "recommendation_adopted") return "采纳今日建议";
+  if (actionType === "recommendation_watching") return "继续观察今日建议";
+  if (actionType === "recommendation_ignored") return "忽略今日建议";
+  if (actionType === "recommendation_record_execution") return "记录执行入口";
+  if (actionType === "recommendation_ask_ai") return "问 AI 小客服";
+  return "今日建议操作";
+}
+
+function formatLogDate(value?: string) {
+  if (!value) return "本机记录";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "本机记录";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function Info({ title, text }: { title: string; text: string }) {

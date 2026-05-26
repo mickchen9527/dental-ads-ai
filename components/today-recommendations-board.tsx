@@ -13,6 +13,8 @@ type Priority = "high" | "medium" | "low";
 type DateType = "source_date" | "visit_date" | "deal_date";
 type PresetKey = "today" | "yesterday" | "last7" | "thisWeek" | "lastWeek" | "thisMonth" | "custom";
 type Choice = "采纳建议" | "继续观察" | "不采纳" | "记录执行" | "问 AI 小客服";
+type HandledChoice = "采纳建议" | "继续观察" | "不采纳";
+type ProcessedVariant = "accepted" | "watching" | "ignored";
 
 type TodayRecommendation = {
   id: string;
@@ -136,6 +138,9 @@ const priorityClass: Record<Priority, string> = {
   low: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
+const recommendationChoiceStorageKey = "dental_ads_recommendation_choices_v1";
+const recommendationActionLogStorageKey = "dental_ads_recommendation_action_logs_v1";
+
 export function TodayRecommendationsBoard() {
   const [preset, setPreset] = useState<PresetKey>("last7");
   const [dateType, setDateType] = useState<DateType>("source_date");
@@ -144,8 +149,8 @@ export function TodayRecommendationsBoard() {
   const [data, setData] = useState<TodayRecommendationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [choiceById, setChoiceById] = useState<Record<string, Choice>>({});
-  const [expandedAcceptedIds, setExpandedAcceptedIds] = useState<Record<string, boolean>>({});
+  const [choiceById, setChoiceById] = useState<Record<string, Choice>>(() => readStoredRecommendationChoices());
+  const [expandedHandledIds, setExpandedHandledIds] = useState<Record<string, boolean>>({});
 
   const selectedRange = useMemo(() => {
     if (preset === "custom") {
@@ -189,13 +194,21 @@ export function TodayRecommendationsBoard() {
     return () => controller.abort();
   }, [dateType, selectedRange.endDate, selectedRange.startDate]);
 
-  const acceptedRecommendations = data?.recommendations.filter((recommendation) => choiceById[recommendation.id] === "采纳建议") ?? [];
-  const pendingRecommendations = data?.recommendations.filter((recommendation) => choiceById[recommendation.id] !== "采纳建议") ?? [];
+  useEffect(() => {
+    writeStoredRecommendationChoices(choiceById);
+  }, [choiceById]);
 
-  function handleChoose(recommendationId: string, choice: Choice) {
-    setChoiceById((current) => ({ ...current, [recommendationId]: choice }));
-    if (choice === "采纳建议") {
-      setExpandedAcceptedIds((current) => ({ ...current, [recommendationId]: false }));
+  const recommendations = data?.recommendations ?? [];
+  const acceptedRecommendations = recommendations.filter((recommendation) => choiceById[recommendation.id] === "采纳建议");
+  const watchingRecommendations = recommendations.filter((recommendation) => choiceById[recommendation.id] === "继续观察");
+  const ignoredRecommendations = recommendations.filter((recommendation) => choiceById[recommendation.id] === "不采纳");
+  const pendingRecommendations = recommendations.filter((recommendation) => !isHandledChoice(choiceById[recommendation.id]));
+
+  function handleChoose(recommendation: TodayRecommendation, choice: Choice) {
+    setChoiceById((current) => ({ ...current, [recommendation.id]: choice }));
+    appendRecommendationActionLog(recommendation, choice);
+    if (isHandledChoice(choice)) {
+      setExpandedHandledIds((current) => ({ ...current, [recommendation.id]: false }));
     }
   }
 
@@ -323,7 +336,7 @@ export function TodayRecommendationsBoard() {
                   key={recommendation.id}
                   choice={choiceById[recommendation.id]}
                   recommendation={recommendation}
-                  onChoose={(choice) => handleChoose(recommendation.id, choice)}
+                  onChoose={(choice) => handleChoose(recommendation, choice)}
                 />
               ))}
               {pendingRecommendations.length === 0 ? (
@@ -341,21 +354,86 @@ export function TodayRecommendationsBoard() {
             </p>
             <div className="mt-4 grid gap-3">
               {acceptedRecommendations.map((recommendation) => (
-                <AcceptedRecommendation
+                <ProcessedRecommendation
                   key={recommendation.id}
-                  expanded={Boolean(expandedAcceptedIds[recommendation.id])}
+                  actionLabel="改为继续观察"
+                  expanded={Boolean(expandedHandledIds[recommendation.id])}
+                  label="已采纳"
                   recommendation={recommendation}
                   onToggle={() =>
-                    setExpandedAcceptedIds((current) => ({
+                    setExpandedHandledIds((current) => ({
                       ...current,
                       [recommendation.id]: !current[recommendation.id],
                     }))
                   }
-                  onUndo={() => handleChoose(recommendation.id, "继续观察")}
+                  onAction={() => handleChoose(recommendation, "继续观察")}
+                  variant="accepted"
                 />
               ))}
               {acceptedRecommendations.length === 0 ? (
                 <EmptyState text="还没有采纳建议。点击上方建议卡里的“采纳建议”后，会自动收起到这里。" />
+              ) : null}
+            </div>
+          </section>
+
+          <section className="rounded-md border border-slate-200 bg-white p-4">
+            <h3 className="text-base font-semibold text-slate-950">
+              继续观察（{watchingRecommendations.length} 条）
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              继续观察的建议会保留状态，适合样本量不够或观察周期没到的情况。
+            </p>
+            <div className="mt-4 grid gap-3">
+              {watchingRecommendations.map((recommendation) => (
+                <ProcessedRecommendation
+                  key={recommendation.id}
+                  actionLabel="采纳建议"
+                  expanded={Boolean(expandedHandledIds[recommendation.id])}
+                  label="继续观察"
+                  recommendation={recommendation}
+                  onToggle={() =>
+                    setExpandedHandledIds((current) => ({
+                      ...current,
+                      [recommendation.id]: !current[recommendation.id],
+                    }))
+                  }
+                  onAction={() => handleChoose(recommendation, "采纳建议")}
+                  variant="watching"
+                />
+              ))}
+              {watchingRecommendations.length === 0 ? (
+                <EmptyState text="还没有继续观察的建议。样本量不够时，可以先放到这里。" />
+              ) : null}
+            </div>
+          </section>
+
+          <section className="rounded-md border border-slate-200 bg-white p-4">
+            <h3 className="text-base font-semibold text-slate-950">
+              已忽略 / 暂不采纳（{ignoredRecommendations.length} 条）
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              暂不采纳不是删除建议，只是说明这条暂时不处理，后面仍然可以展开复核。
+            </p>
+            <div className="mt-4 grid gap-3">
+              {ignoredRecommendations.map((recommendation) => (
+                <ProcessedRecommendation
+                  key={recommendation.id}
+                  actionLabel="改为继续观察"
+                  expanded={Boolean(expandedHandledIds[recommendation.id])}
+                  label="已忽略"
+                  recommendation={recommendation}
+                  onToggle={() =>
+                    setExpandedHandledIds((current) => ({
+                      ...current,
+                      [recommendation.id]: !current[recommendation.id],
+                    }))
+                  }
+                  onAction={() => handleChoose(recommendation, "继续观察")}
+                  variant="ignored"
+                />
+              ))}
+              {ignoredRecommendations.length === 0 ? (
+                <EmptyState text="还没有暂不采纳的建议。点击“不采纳”后，会收起到这里。" />
               ) : null}
             </div>
           </section>
@@ -507,41 +585,67 @@ function RecommendationCard({
   );
 }
 
-function AcceptedRecommendation({
+function ProcessedRecommendation({
   recommendation,
+  label,
+  variant,
+  actionLabel,
   expanded,
   onToggle,
-  onUndo,
+  onAction,
 }: {
   recommendation: TodayRecommendation;
+  label: string;
+  variant: ProcessedVariant;
+  actionLabel: string;
   expanded: boolean;
   onToggle: () => void;
-  onUndo: () => void;
+  onAction: () => void;
 }) {
+  const style = processedVariantClass[variant];
+
   return (
-    <article className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+    <article className={`rounded-md border p-4 ${style.container}`}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <p className="text-sm font-semibold text-emerald-900">
-          已采纳：{recommendation.platform}｜{recommendation.problemType}｜{recommendation.title}
+        <p className={`text-sm font-semibold ${style.text}`}>
+          {label}：{recommendation.platform}｜{recommendation.problemType}｜{recommendation.title}
         </p>
         <div className="flex flex-wrap gap-2">
-          <button className="rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-800" type="button" onClick={onToggle}>
+          <button className={`rounded-md border bg-white px-3 py-2 text-sm font-semibold ${style.button}`} type="button" onClick={onToggle}>
             {expanded ? "收起详情" : "展开查看"}
           </button>
-          <button className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700" type="button" onClick={onUndo}>
-            改为继续观察
+          <button className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700" type="button" onClick={onAction}>
+            {actionLabel}
           </button>
         </div>
       </div>
       {expanded ? (
         <div className="mt-4 rounded-md bg-white p-4">
-          <RecommendationHeader recommendation={recommendation} statusText="已采纳" compact />
+          <RecommendationHeader recommendation={recommendation} statusText={label} compact />
           <RecommendationDetails recommendation={recommendation} />
         </div>
       ) : null}
     </article>
   );
 }
+
+const processedVariantClass: Record<ProcessedVariant, { container: string; text: string; button: string }> = {
+  accepted: {
+    container: "border-emerald-200 bg-emerald-50",
+    text: "text-emerald-900",
+    button: "border-emerald-200 text-emerald-800",
+  },
+  watching: {
+    container: "border-amber-200 bg-amber-50",
+    text: "text-amber-900",
+    button: "border-amber-200 text-amber-900",
+  },
+  ignored: {
+    container: "border-slate-200 bg-slate-50",
+    text: "text-slate-800",
+    button: "border-slate-200 text-slate-700",
+  },
+};
 
 function RecommendationHeader({ recommendation, statusText, compact = false }: { recommendation: TodayRecommendation; statusText: string; compact?: boolean }) {
   return (
@@ -612,6 +716,96 @@ function ListField({ label, items }: { label: string; items: string[] }) {
 
 function EmptyState({ text }: { text: string }) {
   return <div className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">{text}</div>;
+}
+
+function isHandledChoice(choice?: Choice): choice is HandledChoice {
+  return choice === "采纳建议" || choice === "继续观察" || choice === "不采纳";
+}
+
+function isChoice(value: unknown): value is Choice {
+  return (
+    value === "采纳建议" ||
+    value === "继续观察" ||
+    value === "不采纳" ||
+    value === "记录执行" ||
+    value === "问 AI 小客服"
+  );
+}
+
+function readStoredRecommendationChoices() {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = window.localStorage.getItem(recommendationChoiceStorageKey);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+    return Object.entries(parsed).reduce<Record<string, Choice>>((result, [id, choice]) => {
+      if (isChoice(choice)) {
+        result[id] = choice;
+      }
+      return result;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredRecommendationChoices(choices: Record<string, Choice>) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(recommendationChoiceStorageKey, JSON.stringify(choices));
+  } catch {
+    // 本地浏览器存储不可用时，不影响建议页继续使用。
+  }
+}
+
+function appendRecommendationActionLog(recommendation: TodayRecommendation, choice: Choice) {
+  if (typeof window === "undefined") return;
+
+  try {
+    const raw = window.localStorage.getItem(recommendationActionLogStorageKey);
+    const existing = raw ? JSON.parse(raw) : [];
+    const previousLogs = Array.isArray(existing) ? existing : [];
+    const actionType = getRecommendationActionType(choice);
+    const status = getRecommendationStatusText(choice);
+    const nextLog = {
+      id: `${recommendation.id}-${actionType}-${Date.now()}`,
+      recommendationId: recommendation.id,
+      actionType,
+      platform: recommendation.platform,
+      title: recommendation.title,
+      problemType: recommendation.problemType,
+      status,
+      note: `${status}：${recommendation.action}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    window.localStorage.setItem(
+      recommendationActionLogStorageKey,
+      JSON.stringify([nextLog, ...previousLogs].slice(0, 200)),
+    );
+  } catch {
+    // 操作记录写入失败时，只影响本机记录，不阻断建议状态切换。
+  }
+}
+
+function getRecommendationActionType(choice: Choice) {
+  if (choice === "采纳建议") return "recommendation_adopted";
+  if (choice === "继续观察") return "recommendation_watching";
+  if (choice === "不采纳") return "recommendation_ignored";
+  if (choice === "记录执行") return "recommendation_record_execution";
+  return "recommendation_ask_ai";
+}
+
+function getRecommendationStatusText(choice: Choice) {
+  if (choice === "采纳建议") return "已采纳";
+  if (choice === "继续观察") return "继续观察";
+  if (choice === "不采纳") return "已忽略";
+  if (choice === "记录执行") return "记录执行";
+  return "问 AI 小客服";
 }
 
 function actionButtonClass(active: boolean) {
