@@ -66,6 +66,29 @@ type DataGap = {
   message: string;
 };
 
+type RecommendationActionLog = {
+  id: string;
+  recommendationId: string;
+  actionType: string;
+  platform: string;
+  title: string;
+  problemType: string;
+  status: string;
+  note: string;
+  createdAt: string;
+};
+
+type CloudActionLogRecord = {
+  action_type?: string | null;
+  recommendation_id?: string | null;
+  platform?: string | null;
+  title?: string | null;
+  status?: string | null;
+  note?: string | null;
+  payload?: unknown;
+  created_at?: string | null;
+};
+
 type TodayRecommendationsResponse = {
   range: {
     startDate: string;
@@ -198,6 +221,33 @@ export function TodayRecommendationsBoard() {
     writeStoredRecommendationChoices(choiceById);
   }, [choiceById]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadCloudRecommendationChoices() {
+      try {
+        const response = await fetch("/api/action-logs?source=recommendations&limit=200", { cache: "no-store" });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(payload?.message ?? "读取云端操作记录失败。");
+        }
+
+        const cloudChoices = buildChoicesFromCloudRecords(payload?.records);
+        if (active && Object.keys(cloudChoices).length > 0) {
+          setChoiceById((current) => ({ ...current, ...cloudChoices }));
+        }
+      } catch {
+        // 云端操作记录不可用时，继续使用 localStorage 里的本机状态。
+      }
+    }
+
+    loadCloudRecommendationChoices();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const recommendations = data?.recommendations ?? [];
   const acceptedRecommendations = recommendations.filter((recommendation) => choiceById[recommendation.id] === "采纳建议");
   const watchingRecommendations = recommendations.filter((recommendation) => choiceById[recommendation.id] === "继续观察");
@@ -206,7 +256,7 @@ export function TodayRecommendationsBoard() {
 
   function handleChoose(recommendation: TodayRecommendation, choice: Choice) {
     setChoiceById((current) => ({ ...current, [recommendation.id]: choice }));
-    appendRecommendationActionLog(recommendation, choice);
+    void persistRecommendationActionLog(recommendation, choice);
     if (isHandledChoice(choice)) {
       setExpandedHandledIds((current) => ({ ...current, [recommendation.id]: false }));
     }
@@ -762,34 +812,106 @@ function writeStoredRecommendationChoices(choices: Record<string, Choice>) {
   }
 }
 
-function appendRecommendationActionLog(recommendation: TodayRecommendation, choice: Choice) {
+async function persistRecommendationActionLog(recommendation: TodayRecommendation, choice: Choice) {
+  const actionLog = buildRecommendationActionLog(recommendation, choice);
+
+  try {
+    const response = await fetch("/api/action-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: actionLog.actionType,
+        source: "recommendations",
+        recommendationId: actionLog.recommendationId,
+        platform: actionLog.platform,
+        title: actionLog.title,
+        status: getRecommendationStatusKey(choice),
+        note: actionLog.note,
+        payload: {
+          problemType: recommendation.problemType,
+          priority: recommendation.priority,
+          problem: recommendation.problem,
+          reason: recommendation.reason,
+          action: recommendation.action,
+          risk: recommendation.risk,
+          observeDays: recommendation.observeDays,
+          dataBasis: recommendation.dataBasis,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("云端操作记录写入失败。");
+    }
+
+    appendLocalRecommendationActionLog(actionLog);
+  } catch {
+    appendLocalRecommendationActionLog(actionLog);
+  }
+}
+
+function buildRecommendationActionLog(recommendation: TodayRecommendation, choice: Choice): RecommendationActionLog {
+  const actionType = getRecommendationActionType(choice);
+  const status = getRecommendationStatusText(choice);
+
+  return {
+    id: `${recommendation.id}-${actionType}-${Date.now()}`,
+    recommendationId: recommendation.id,
+    actionType,
+    platform: recommendation.platform,
+    title: recommendation.title,
+    problemType: recommendation.problemType,
+    status,
+    note: `${status}：${recommendation.action}`,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function appendLocalRecommendationActionLog(actionLog: RecommendationActionLog) {
   if (typeof window === "undefined") return;
 
   try {
     const raw = window.localStorage.getItem(recommendationActionLogStorageKey);
     const existing = raw ? JSON.parse(raw) : [];
     const previousLogs = Array.isArray(existing) ? existing : [];
-    const actionType = getRecommendationActionType(choice);
-    const status = getRecommendationStatusText(choice);
-    const nextLog = {
-      id: `${recommendation.id}-${actionType}-${Date.now()}`,
-      recommendationId: recommendation.id,
-      actionType,
-      platform: recommendation.platform,
-      title: recommendation.title,
-      problemType: recommendation.problemType,
-      status,
-      note: `${status}：${recommendation.action}`,
-      createdAt: new Date().toISOString(),
-    };
 
     window.localStorage.setItem(
       recommendationActionLogStorageKey,
-      JSON.stringify([nextLog, ...previousLogs].slice(0, 200)),
+      JSON.stringify([actionLog, ...previousLogs].slice(0, 200)),
     );
   } catch {
     // 操作记录写入失败时，只影响本机记录，不阻断建议状态切换。
   }
+}
+
+function buildChoicesFromCloudRecords(records: unknown) {
+  if (!Array.isArray(records)) return {};
+
+  return records.reduce<Record<string, Choice>>((result, record) => {
+    if (!record || typeof record !== "object") return result;
+    const item = record as CloudActionLogRecord;
+    const recommendationId = normalizeOptionalText(item.recommendation_id);
+    const choice = getChoiceFromActionType(item.action_type);
+
+    if (recommendationId && choice && !result[recommendationId]) {
+      result[recommendationId] = choice;
+    }
+
+    return result;
+  }, {});
+}
+
+function getChoiceFromActionType(actionType?: string | null): HandledChoice | null {
+  if (actionType === "recommendation_adopted") return "采纳建议";
+  if (actionType === "recommendation_watching") return "继续观察";
+  if (actionType === "recommendation_ignored") return "不采纳";
+  return null;
+}
+
+function normalizeOptionalText(value: unknown) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
 }
 
 function getRecommendationActionType(choice: Choice) {
@@ -806,6 +928,14 @@ function getRecommendationStatusText(choice: Choice) {
   if (choice === "不采纳") return "已忽略";
   if (choice === "记录执行") return "记录执行";
   return "问 AI 小客服";
+}
+
+function getRecommendationStatusKey(choice: Choice) {
+  if (choice === "采纳建议") return "adopted";
+  if (choice === "继续观察") return "watching";
+  if (choice === "不采纳") return "ignored";
+  if (choice === "记录执行") return "record_execution";
+  return "ask_ai";
 }
 
 function actionButtonClass(active: boolean) {

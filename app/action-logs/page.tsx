@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
-import { actionLogRows } from "@/lib/v12-static-data";
 
 const headers = [
   "日期",
@@ -24,6 +23,8 @@ const headers = [
 
 const recommendationActionLogStorageKey = "dental_ads_recommendation_action_logs_v1";
 
+type LogSource = "loading" | "cloud" | "local";
+
 type LocalRecommendationActionLog = {
   id?: string;
   recommendationId?: string;
@@ -36,11 +37,56 @@ type LocalRecommendationActionLog = {
   createdAt?: string;
 };
 
+type CloudRecommendationActionLog = {
+  id?: string;
+  action_type?: string | null;
+  source?: string | null;
+  recommendation_id?: string | null;
+  platform?: string | null;
+  title?: string | null;
+  status?: string | null;
+  note?: string | null;
+  payload?: unknown;
+  created_at?: string | null;
+};
+
 export default function ActionLogsPage() {
   const [filter, setFilter] = useState("全部");
-  const [recommendationRows] = useState<string[][]>(() => readLocalRecommendationRows());
+  const [logSource, setLogSource] = useState<LogSource>("loading");
+  const [sourceMessage, setSourceMessage] = useState("正在读取云端操作记录。");
+  const [recommendationRows, setRecommendationRows] = useState<string[][]>([]);
 
-  const rows = [...recommendationRows, ...actionLogRows];
+  useEffect(() => {
+    let active = true;
+
+    async function loadActionLogs() {
+      try {
+        const response = await fetch("/api/action-logs?limit=100", { cache: "no-store" });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(payload?.message ?? "读取云端操作记录失败。");
+        }
+
+        if (!active) return;
+        setRecommendationRows(mapCloudRecommendationRows(payload?.records));
+        setLogSource("cloud");
+        setSourceMessage("当前显示：云端操作记录。云端记录可以跨设备保留。");
+      } catch {
+        if (!active) return;
+        setRecommendationRows(readLocalRecommendationRows());
+        setLogSource("local");
+        setSourceMessage("当前显示：本机临时记录。本机记录只保存在当前浏览器，换电脑或清缓存会丢失。");
+      }
+    }
+
+    loadActionLogs();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const rows = logSource === "loading" ? [] : recommendationRows;
   const filteredRows = rows.filter((row) => {
     if (filter === "全部") return true;
     if (filter === "已执行") return row[6] === "已执行";
@@ -86,7 +132,9 @@ export default function ActionLogsPage() {
       </section>
 
       <section className="mb-4 rounded-md border border-cyan-100 bg-cyan-50 p-4 text-sm leading-6 text-cyan-900">
-        今日总建议里的“采纳 / 继续观察 / 忽略”会先记录在本机浏览器里，并显示到这里。后续接 Supabase 操作记录表后，可以跨电脑保存。
+        {sourceMessage}
+        <br />
+        今日总建议里的“采纳 / 继续观察 / 忽略”会记录到这里，方便后续复盘。
       </section>
 
       <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">
@@ -159,6 +207,31 @@ function readLocalRecommendationRows() {
   }
 }
 
+function mapCloudRecommendationRows(records: unknown) {
+  if (!Array.isArray(records)) return [];
+
+  return records
+    .filter((item): item is CloudRecommendationActionLog => Boolean(item && typeof item === "object"))
+    .map((item) => {
+      const status = statusText(item.status);
+      return [
+        formatLogDate(item.created_at),
+        actionTypeLabel(item.action_type ?? undefined),
+        item.platform ?? "未填写",
+        "多平台建议",
+        sourceText(item.source),
+        item.title ?? "未命名建议",
+        status === "已采纳" ? "已执行" : "未执行",
+        status,
+        item.recommendation_id ?? "云端记录",
+        "待复盘",
+        "待复盘",
+        status === "已采纳" ? "待复盘" : "未执行",
+        item.note ?? "来自今日总建议页面的云端操作记录。",
+      ];
+    });
+}
+
 function actionTypeLabel(actionType?: string) {
   if (actionType === "recommendation_adopted") return "采纳今日建议";
   if (actionType === "recommendation_watching") return "继续观察今日建议";
@@ -168,7 +241,21 @@ function actionTypeLabel(actionType?: string) {
   return "今日建议操作";
 }
 
-function formatLogDate(value?: string) {
+function statusText(status?: string | null) {
+  if (status === "adopted" || status === "已采纳") return "已采纳";
+  if (status === "watching" || status === "继续观察") return "继续观察";
+  if (status === "ignored" || status === "已忽略") return "已忽略";
+  if (status === "record_execution" || status === "记录执行") return "记录执行";
+  if (status === "ask_ai" || status === "问 AI 小客服") return "问 AI 小客服";
+  return status ?? "已记录";
+}
+
+function sourceText(source?: string | null) {
+  if (source === "recommendations") return "今日总建议";
+  return source ?? "系统操作";
+}
+
+function formatLogDate(value?: string | null) {
   if (!value) return "本机记录";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "本机记录";
