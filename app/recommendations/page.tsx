@@ -1,4 +1,5 @@
 ﻿import { AppShell } from "@/components/app-shell";
+import { AiDailySummary } from "@/components/ai-daily-summary";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { TodayRecommendationsBoard } from "@/components/today-recommendations-board";
@@ -30,6 +31,8 @@ export default function RecommendationsPage() {
           所有建议都只是帮你排优先级。预算、关键词、价格、页面、素材和客服动作必须由人工复核后执行；e看牙回流只是初步闭环，不是精准归因。
         </p>
       </section>
+
+      <AiDailySummary />
 
       <TodayRecommendationsBoard />
     </AppShell>
