@@ -10,6 +10,7 @@ type AiSummary = {
   riskNotes: string[];
   confidence: "低" | "中" | "高" | string;
   disclaimer: string;
+  rawText?: string;
   model?: string;
   inputStats?: {
     recommendationCount?: number;
@@ -110,6 +111,21 @@ export function AiDailySummary() {
             <SummaryList title="数据不足提醒" items={summary.dataWarnings} emptyText="暂未发现额外数据不足提醒。" />
             <SummaryList title="风险提醒" items={summary.riskNotes} emptyText="暂未发现额外风险提醒。" />
           </div>
+
+          {summary.rawText ? (
+            <div className="rounded-md border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
+              <p className="font-semibold text-slate-950">AI 原文总结</p>
+              <p className="mt-1 text-slate-500">
+                DeepSeek 没有严格返回结构化 JSON 时，系统会先把原文展示出来，方便人工查看。
+              </p>
+              <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+                {summary.rawText}
+              </pre>
+              <p className="mt-3 text-xs text-slate-500">
+                AI 仅辅助总结，不自动调价，不自动执行，也不替代人工判断。
+              </p>
+            </div>
+          ) : null}
 
           <div className="rounded-md border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700">
             <p className="font-semibold text-slate-950">辅助判断说明</p>

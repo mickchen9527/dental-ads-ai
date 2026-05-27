@@ -151,7 +151,7 @@ export async function POST(request: Request) {
         {
           role: "user",
           content:
-            `请基于下面 JSON 摘要，输出严格 JSON，不要输出 Markdown。字段必须包含：summary:string, keyProblems:string[], tomorrowActions:string[], dataWarnings:string[], riskNotes:string[], confidence:"低"|"中"|"高", disclaimer:string。\n\n${JSON.stringify(compactInput)}`,
+            `请基于下面 JSON 摘要，必须只返回一个 JSON 对象，不要返回 Markdown，不要包裹 \`\`\`json 代码块，也不要输出多余解释。字段必须包含：summary:string, keyProblems:string[], tomorrowActions:string[], dataWarnings:string[], riskNotes:string[], confidence:"低"|"中"|"高", disclaimer:string。\n\n${JSON.stringify(compactInput)}`,
         },
       ],
       stream: false,
@@ -168,27 +168,41 @@ export async function POST(request: Request) {
   }
 
   const outputText = extractOutputText(payload);
+  const inputStats = {
+    recommendationCount: recommendations.items.length,
+    dataQualityIssueCount: dataQuality.issueCount,
+    actionLogCount: actionLogs.total,
+    competitorItemCount: competitorSummary.itemCount,
+  };
+
+  if (!outputText) {
+    return NextResponse.json(
+      { message: "DeepSeek 已返回，但内容为空。请稍后重试，规则型建议仍可正常使用。" },
+      { status: 502 },
+    );
+  }
+
   const summary = parseAiSummary(outputText);
 
   if (!summary) {
-    return NextResponse.json(
-      {
-        message: "AI 已返回内容，但格式暂时无法展示。规则型建议仍可正常使用。",
-        rawText: outputText.slice(0, 1200),
-      },
-      { status: 502 },
-    );
+    return NextResponse.json({
+      summary: "DeepSeek 返回了原文总结，暂未识别为结构化 JSON。下面先按原文展示，规则型建议仍可正常使用。",
+      keyProblems: [],
+      tomorrowActions: [],
+      dataWarnings: [],
+      riskNotes: [],
+      confidence: "中",
+      disclaimer: "这是 AI 辅助总结，不自动调价，不自动执行，也不能替代人工判断。",
+      rawText: outputText.slice(0, 4000),
+      model,
+      inputStats,
+    });
   }
 
   return NextResponse.json({
     ...summary,
     model,
-    inputStats: {
-      recommendationCount: recommendations.items.length,
-      dataQualityIssueCount: dataQuality.issueCount,
-      actionLogCount: actionLogs.total,
-      competitorItemCount: competitorSummary.itemCount,
-    },
+    inputStats,
   });
 }
 
@@ -485,14 +499,14 @@ function parseAiSummary(text: string) {
   if (!parsed) return null;
 
   return {
-    summary: normalizeString(parsed.summary) ?? "AI 已生成总结，但缺少总体判断。",
-    keyProblems: normalizeStringArray(parsed.keyProblems),
-    tomorrowActions: normalizeStringArray(parsed.tomorrowActions),
-    dataWarnings: normalizeStringArray(parsed.dataWarnings),
-    riskNotes: normalizeStringArray(parsed.riskNotes),
+    summary: normalizeString(firstDefined(parsed.summary, parsed["今日投放概况"], parsed["总体判断"], parsed["总结"])) ?? "AI 已生成总结，但缺少总体判断。",
+    keyProblems: normalizeStringArray(firstDefined(parsed.keyProblems, parsed["主要问题"], parsed["当前主要问题"])),
+    tomorrowActions: normalizeStringArray(firstDefined(parsed.tomorrowActions, parsed["明日执行清单"], parsed["执行清单"])),
+    dataWarnings: normalizeStringArray(firstDefined(parsed.dataWarnings, parsed["数据不足提醒"], parsed["不可判断提醒"])),
+    riskNotes: normalizeStringArray(firstDefined(parsed.riskNotes, parsed["风险说明"], parsed["风险提醒"], parsed["risk"])),
     confidence: normalizeConfidence(parsed.confidence),
     disclaimer:
-      normalizeString(parsed.disclaimer) ??
+      normalizeString(firstDefined(parsed.disclaimer, parsed["辅助判断免责声明"], parsed["免责声明"])) ??
       "这是 AI 辅助总结，不自动调价，不自动执行，也不能替代人工判断。",
   };
 }
@@ -503,8 +517,24 @@ function parseJsonObject(text: string) {
 
   try {
     const direct = JSON.parse(trimmed);
-    return direct && typeof direct === "object" && !Array.isArray(direct) ? direct as Record<string, unknown> : null;
+    if (direct && typeof direct === "object" && !Array.isArray(direct)) {
+      return direct as Record<string, unknown>;
+    }
+    if (typeof direct === "string" && direct.trim() !== trimmed) {
+      return parseJsonObject(direct);
+    }
+    return null;
   } catch {
+    const fenced = extractJsonFence(trimmed);
+    if (fenced) {
+      try {
+        const parsedFence = JSON.parse(fenced);
+        return parsedFence && typeof parsedFence === "object" && !Array.isArray(parsedFence) ? parsedFence as Record<string, unknown> : null;
+      } catch {
+        // 继续尝试从全文截取 JSON 对象。
+      }
+    }
+
     const start = trimmed.indexOf("{");
     const end = trimmed.lastIndexOf("}");
     if (start < 0 || end <= start) return null;
@@ -515,6 +545,11 @@ function parseJsonObject(text: string) {
       return null;
     }
   }
+}
+
+function extractJsonFence(text: string) {
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return fenceMatch?.[1]?.trim() ?? null;
 }
 
 function normalizeDeepSeekError(payload: unknown) {
@@ -534,6 +569,13 @@ function normalizeString(value: unknown) {
 }
 
 function normalizeStringArray(value: unknown) {
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|[；;]/)
+      .map((item) => item.replace(/^[-*、\d.()\s]+/, "").trim())
+      .filter(Boolean)
+      .slice(0, 8);
+  }
   if (!Array.isArray(value)) return [];
   return value.map((item) => normalizeString(item)).filter((item): item is string => Boolean(item)).slice(0, 8);
 }
@@ -541,7 +583,15 @@ function normalizeStringArray(value: unknown) {
 function normalizeConfidence(value: unknown) {
   const text = normalizeString(value);
   if (text === "低" || text === "中" || text === "高") return text;
+  const normalized = text?.toLowerCase();
+  if (normalized === "low") return "低";
+  if (normalized === "medium" || normalized === "middle") return "中";
+  if (normalized === "high") return "高";
   return "中";
+}
+
+function firstDefined(...values: unknown[]) {
+  return values.find((value) => value !== undefined && value !== null);
 }
 
 function normalizePlatform(value: unknown) {
