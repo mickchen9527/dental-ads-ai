@@ -74,7 +74,7 @@ type CompetitorPriceRow = {
   display_price: number | string | null;
 };
 
-const model = "gpt-4.1-mini";
+const model = process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash";
 
 const detailTables = [
   "meituan_summary_rows",
@@ -92,11 +92,11 @@ const detailTables = [
 ];
 
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
 
   if (!apiKey) {
     return NextResponse.json(
-      { message: "AI 总结暂未启用，请先在环境变量中配置 OPENAI_API_KEY。" },
+      { message: "AI 总结暂未启用，请先在环境变量中配置 DEEPSEEK_API_KEY。" },
       { status: 503 },
     );
   }
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
     ],
   };
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({
       model,
-      input: [
+      messages: [
         {
           role: "system",
           content:
@@ -154,15 +154,16 @@ export async function POST(request: Request) {
             `请基于下面 JSON 摘要，输出严格 JSON，不要输出 Markdown。字段必须包含：summary:string, keyProblems:string[], tomorrowActions:string[], dataWarnings:string[], riskNotes:string[], confidence:"低"|"中"|"高", disclaimer:string。\n\n${JSON.stringify(compactInput)}`,
         },
       ],
-      max_output_tokens: 1200,
-      temperature: 0.2,
+      stream: false,
+      max_tokens: 1200,
+      temperature: 1,
     }),
   });
 
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = normalizeOpenAiError(payload) ?? "AI 总结生成失败，请稍后重试。规则型建议仍可正常使用。";
+    const message = normalizeDeepSeekError(payload) ?? "AI 总结生成失败，请稍后重试。规则型建议仍可正常使用。";
     return NextResponse.json({ message }, { status: response.status });
   }
 
@@ -445,6 +446,19 @@ async function fetchCompetitorSummary(supabase: NonNullable<ReturnType<typeof ge
 
 function extractOutputText(payload: unknown) {
   if (!payload || typeof payload !== "object") return "";
+
+  const choices = (payload as { choices?: unknown }).choices;
+  if (Array.isArray(choices)) {
+    const firstChoice = choices[0];
+    if (firstChoice && typeof firstChoice === "object") {
+      const message = (firstChoice as { message?: unknown }).message;
+      if (message && typeof message === "object") {
+        const content = (message as { content?: unknown }).content;
+        if (typeof content === "string") return content.trim();
+      }
+    }
+  }
+
   const maybeOutputText = (payload as { output_text?: unknown }).output_text;
   if (typeof maybeOutputText === "string") return maybeOutputText;
 
@@ -503,7 +517,7 @@ function parseJsonObject(text: string) {
   }
 }
 
-function normalizeOpenAiError(payload: unknown) {
+function normalizeDeepSeekError(payload: unknown) {
   if (!payload || typeof payload !== "object") return null;
   const error = (payload as { error?: unknown }).error;
   if (!error || typeof error !== "object") return null;

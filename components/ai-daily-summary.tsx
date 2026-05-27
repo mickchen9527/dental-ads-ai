@@ -58,7 +58,7 @@ export function AiDailySummary() {
           <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">AI 辅助总结</p>
           <h2 className="mt-1 text-lg font-semibold text-slate-950">AI 今日总结</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
-            基于今日总建议、数据质量、目标值和操作记录复盘生成，仅供人工参考。AI 不自动调价，不自动执行，也不替代现有规则系统。
+            基于今日总建议、数据质量和操作记录复盘生成，由 DeepSeek API 辅助总结，仅供人工参考。AI 不自动调价，不自动执行，也不替代现有规则系统。
           </p>
         </div>
         <button
@@ -73,7 +73,7 @@ export function AiDailySummary() {
 
       <div className="mt-4 rounded-md border border-indigo-100 bg-white p-3 text-sm leading-6 text-slate-700">
         <p>不点击按钮时不会调用 AI，避免产生不必要费用。</p>
-        <p>如果没有配置 `OPENAI_API_KEY`，这里会提示未启用，规则型建议仍然正常使用。</p>
+        <p>如果没有配置 `DEEPSEEK_API_KEY`，这里会提示未启用，规则型建议仍然正常使用。</p>
       </div>
 
       {state === "loading" ? (
