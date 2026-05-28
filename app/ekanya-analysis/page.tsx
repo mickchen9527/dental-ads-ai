@@ -1,16 +1,8 @@
 import { AppShell } from "@/components/app-shell";
-import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { StorageNote } from "@/components/storage-note";
 import { TimeScopeFilter } from "@/components/time-scope-filter";
-
-const rows = [
-  ["美团", "42", "28", "19", "12", "¥18,600.00", "来源较清楚，继续补成交备注"],
-  ["抖音", "8", "5", "1", "0", "¥0.00", "来源记录少，先补前台登记"],
-  ["腾讯广点通", "6", "4", "3", "1", "¥268.00", "样本少，先观察"],
-  ["高德", "5", "2", "3", "2", "¥1,040.00", "自然到店和广告到店要分开记"],
-];
 
 export default function EkanyaAnalysisPage() {
   return (
@@ -36,32 +28,22 @@ export default function EkanyaAnalysisPage() {
         <StorageNote />
       </div>
 
-      <section className="mb-6 grid gap-4 md:grid-cols-4">
-        <MetricCard label="本周回流客户" value="61" helper="e看牙里能看到来源的平台客户" tone="cyan" />
-        <MetricCard label="到院数" value="26" helper="已经到院的客户数" />
-        <MetricCard label="成交数" value="15" helper="已成交客户数" tone="emerald" />
-        <MetricCard label="实收金额" value="¥19,908.00" helper="以 e看牙实际实收为准" tone="amber" />
-      </section>
-
-      <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-        <table className="w-full min-w-[900px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
-            <tr>
-              {["平台", "来源客户数", "预约数", "到院数", "成交数", "实收金额", "大白话判断"].map((header) => (
-                <th key={header} className="px-4 py-3">{header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rows.map((row) => (
-              <tr key={row[0]}>
-                {row.map((cell) => (
-                  <td key={cell} className="px-4 py-3 text-slate-700">{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        <p className="font-semibold">暂无独立 e看牙静态回流结果。</p>
+        <p>
+          本页不再展示固定回流客户数、到院数、成交数和实收金额。请先上传并解析 e看牙后端回流数据，真实到院、成交和实收会在“项目分析”和“闭环 ROI 分析”中展示。
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a className="rounded-md border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-amber-900" href="/upload">
+            去数据上传页
+          </a>
+          <a className="rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-800" href="/project-analysis">
+            查看项目分析
+          </a>
+          <a className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800" href="/roi-analysis">
+            查看闭环 ROI
+          </a>
+        </div>
       </section>
 
       <section className="mt-6 rounded-md border border-cyan-200 bg-cyan-50 p-4">

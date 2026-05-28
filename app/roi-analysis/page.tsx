@@ -1,17 +1,9 @@
 import { AppShell } from "@/components/app-shell";
-import { MetricCard } from "@/components/metric-card";
 import { MultiPlatformClosedLoopBoard } from "@/components/multi-platform-closed-loop-board";
 import { PageHeader } from "@/components/page-header";
 import { PageHelpButton } from "@/components/page-help-button";
 import { StorageNote } from "@/components/storage-note";
 import { TimeScopeFilter } from "@/components/time-scope-filter";
-
-const roiRows = [
-  ["美团", "¥12,800.00", "¥18,600.00", "1.45", "回收偏弱，先优化页面和承接"],
-  ["抖音", "¥0.00", "¥0.00", "-", "等待上传数据"],
-  ["腾讯广点通", "¥0.00", "¥268.00", "-", "等待广告花费数据"],
-  ["高德", "¥0.00", "¥1,040.00", "-", "预留平台，先分清自然到店和广告到店"],
-];
 
 export default function RoiAnalysisPage() {
   return (
@@ -45,36 +37,8 @@ export default function RoiAnalysisPage() {
 
       <MultiPlatformClosedLoopBoard />
 
-      <section className="mb-6 grid gap-4 md:grid-cols-4">
-        <MetricCard label="本周广告费" value="¥12,800.00" helper="当前已上传平台花费" tone="cyan" />
-        <MetricCard label="e看牙实收" value="¥19,908.00" helper="以实际收费为准" tone="emerald" />
-        <MetricCard label="实收 ROI" value="1.56" helper="实收金额 / 广告花费" tone="amber" />
-        <MetricCard label="目标参考线" value="1:3" helper="不是所有项目当周必须达到" />
-      </section>
-
       <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-        ROI &lt; 1：当期回收很弱，需要重点关注；ROI 1-2：回收偏弱，先观察；ROI 2-3：接近可接受，继续优化；ROI ≥ 3：达到较健康参考线。种植、正畸、半口/全口项目要看 7-30 天甚至 15-60 天。
-      </section>
-
-      <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-        <table className="w-full min-w-[900px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
-            <tr>
-              {["平台", "广告花费", "e看牙实收金额", "实收 ROI", "大白话判断"].map((header) => (
-                <th key={header} className="px-4 py-3">{header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {roiRows.map((row) => (
-              <tr key={row[0]}>
-                {row.map((cell) => (
-                  <td key={cell} className="px-4 py-3 text-slate-700">{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        本页只保留真实多平台闭环看板。没有真实解析数据时，不显示固定广告费、固定实收金额或固定 ROI。ROI 参考线只是判断口径，不代表所有项目当周都必须达到。
       </section>
 
       <section className="mt-6 rounded-md border border-cyan-200 bg-cyan-50 p-4">
