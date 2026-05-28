@@ -1,15 +1,6 @@
 import { AppShell } from "@/components/app-shell";
-import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { PlatformOverviewBoard } from "@/components/platform-overview-board";
-import { PlatformPerformanceTable } from "@/components/platform-performance-table";
-import { dataSources } from "@/lib/config/dataSources";
-import { standardRows } from "@/lib/mock-data";
-import {
-  formatCurrency,
-  formatNumber,
-  getRowsByAdSource,
-} from "@/lib/metrics";
 import { pendingIntegrationNote } from "@/lib/v12-static-data";
 
 const platformStatus = [
@@ -24,8 +15,6 @@ const platformStatus = [
 ] as const;
 
 export default function PlatformAnalysisPage() {
-  const platformRows = getRowsByAdSource(standardRows);
-
   return (
     <AppShell activeHref="/platform-analysis">
       <PageHeader
@@ -44,31 +33,6 @@ export default function PlatformAnalysisPage() {
         {platformStatus.map(([title, description, tone]) => (
           <StatusCard key={title} title={title} description={description} tone={tone} />
         ))}
-      </section>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {platformRows.map(({ sourceId, metrics }) => {
-          const source = dataSources.find((item) => item.legacyId === sourceId);
-          const isSupported = source?.status === "已支持计算";
-
-          return (
-            <MetricCard
-              key={sourceId}
-              label={source?.name ?? sourceId}
-              value={isSupported ? formatCurrency(metrics.spend) : "暂不参与计算"}
-              helper={
-                isSupported
-                  ? `咨询 ${formatNumber(metrics.consultations)}，成交 ${formatNumber(metrics.deals)}`
-                  : "示例入口，当前不参与核心计算"
-              }
-              tone={isSupported ? "cyan" : "amber"}
-            />
-          );
-        })}
-      </div>
-
-      <section className="mt-6">
-        <PlatformPerformanceTable rows={platformRows} />
       </section>
     </AppShell>
   );

@@ -227,7 +227,7 @@ const detailTableSpecs: DetailTableSpec[] = [
     dataTypes: ["e看牙后端回流数据", "ekanya-backflow"],
     select:
       "uploaded_file_id, source_platform, intention_project, visit_project, deal_project, appointment_status, visit_status, deal_status, paid_amount",
-    requiredFields: ["source_platform", "intention_project", "visit_project", "deal_project", "paid_amount"],
+    requiredFields: ["source_platform", "deal_project", "paid_amount"],
   },
 ];
 
@@ -571,7 +571,7 @@ function buildFileQualitySummary(records: UploadedFileRow[]) {
   const savedRecords = activeRecords.filter((record) => record.parse_status === "saved" || !record.parse_status);
   const failedRecords = activeRecords.filter((record) => record.parse_status === "failed");
   const missingPlatformCount = activeRecords.filter((record) => !record.platform).length;
-  const missingDateCount = activeRecords.filter((record) => !record.period_start && !record.period_end).length;
+  const missingDateCount = activeRecords.filter(isMissingUploadedPeriod).length;
   const missingStoragePathCount = activeRecords.filter((record) => !record.storage_path).length;
   const coveredPrimaryPlatforms = new Set(
     activeParsedRecords
@@ -618,6 +618,22 @@ function buildDetailSummary(detailRows: DetailPlatformQuality[], detailTables: D
     analyzablePlatformCount,
     detailScore,
   };
+}
+
+function isMissingUploadedPeriod(record: UploadedFileRow) {
+  if (record.period_start || record.period_end) return false;
+  if (record.parse_status === "parsed" && canInferPeriodFromParsedData(record)) return false;
+  return true;
+}
+
+function canInferPeriodFromParsedData(record: UploadedFileRow) {
+  const text = `${record.platform ?? ""} ${record.data_type ?? ""}`.toLowerCase();
+  return (
+    text.includes("美团推广汇总") ||
+    text.includes("meituan-summary") ||
+    text.includes("e看牙后端回流") ||
+    text.includes("ekanya-backflow")
+  );
 }
 
 function buildPlatformRows(records: UploadedFileRow[]): PlatformQuality[] {
@@ -683,7 +699,7 @@ function buildFileIssues(records: UploadedFileRow[], platformRows: PlatformQuali
   const savedCount = activeRecords.filter((record) => record.parse_status === "saved" || !record.parse_status).length;
   const failedCount = activeRecords.filter((record) => record.parse_status === "failed").length;
   const missingPlatformCount = activeRecords.filter((record) => !record.platform).length;
-  const missingDateCount = activeRecords.filter((record) => !record.period_start && !record.period_end).length;
+  const missingDateCount = activeRecords.filter(isMissingUploadedPeriod).length;
   const missingStoragePathCount = activeRecords.filter((record) => !record.storage_path).length;
   const stalePlatforms = platformRows.filter((row) => row.uploadCount > 0 && row.latestUploadedAt && isOlderThanDays(row.latestUploadedAt, 7));
   const uploadedButNotAnalyzable = platformRows.filter((row) => row.uploadCount > 0 && row.analyzableCount === 0);

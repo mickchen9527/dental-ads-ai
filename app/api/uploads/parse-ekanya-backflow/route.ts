@@ -20,6 +20,7 @@ const headerAliases: Array<[string, string]> = [
   ["成交日期", "deal_date"],
   ["收费日期", "deal_date"],
   ["付款日期", "deal_date"],
+  ["收费时间", "deal_date"],
   ["患者姓名", "patient_name"],
   ["客户姓名", "patient_name"],
   ["姓名", "patient_name"],
@@ -32,6 +33,9 @@ const headerAliases: Array<[string, string]> = [
   ["来源平台", "source_platform"],
   ["客户来源", "source_platform"],
   ["来源", "source_platform"],
+  ["患者一级来源", "source_level_1"],
+  ["患者二级来源", "source_level_2"],
+  ["患者三级来源", "source_level_3"],
   ["来源渠道", "source_channel"],
   ["渠道", "source_channel"],
   ["二级来源", "source_channel"],
@@ -55,8 +59,13 @@ const headerAliases: Array<[string, string]> = [
   ["收费金额", "paid_amount"],
   ["已收金额", "paid_amount"],
   ["实付金额", "paid_amount"],
+  ["收款金额", "paid_amount"],
+  ["现金类实收", "cash_paid_amount"],
+  ["平台结算", "platform_settlement"],
   ["应收金额", "receivable_amount"],
   ["原价金额", "receivable_amount"],
+  ["开单金额", "receivable_amount"],
+  ["折后应收", "receivable_amount"],
   ["优惠金额", "discount_amount"],
   ["减免金额", "discount_amount"],
   ["医生", "doctor_name"],
@@ -137,12 +146,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (parsedData.rows.length === 0) {
+    const validRows = parsedData.rows.filter(isValidEkanyaRow);
+
+    if (validRows.length === 0) {
       await markUploadFailed(supabase, id);
       return NextResponse.json({ message: "文件里没有可解析的数据行，请检查是否上传了 e看牙导出的客户/就诊/收费数据。" }, { status: 400 });
     }
 
-    const mappedRows = parsedData.rows.map((row) => mapEkanyaBackflowRow(id, row));
+    const mappedRows = validRows.map((row) => mapEkanyaBackflowRow(id, row));
+    const periodRange = getDateRange(mappedRows.map((row) => row.deal_date ?? row.source_date ?? row.visit_date));
     const deleteResult = await supabase.from("ekanya_backflow_rows").delete().eq("uploaded_file_id", id);
 
     if (deleteResult.error) {
@@ -176,6 +188,8 @@ export async function POST(request: Request) {
       .update({
         parse_status: "parsed",
         row_count: mappedRows.length,
+        period_start: periodRange.start,
+        period_end: periodRange.end,
       })
       .eq("id", id);
 
@@ -233,6 +247,11 @@ async function parseWorkbookData(fileBlob: Blob) {
 }
 
 function mapEkanyaBackflowRow(uploadedFileId: string, row: RawSheetRow) {
+  const cashPaid = parseNumberCell(getCell(row, "cash_paid_amount"));
+  const platformSettlement = parseNumberCell(getCell(row, "platform_settlement"));
+  const directPaid = parseNumberCell(getCell(row, "paid_amount"));
+  const paidAmount = directPaid ?? sumNullable(cashPaid, platformSettlement);
+
   return {
     uploaded_file_id: uploadedFileId,
     source_date: parseDateCell(getCell(row, "source_date")),
@@ -241,7 +260,7 @@ function mapEkanyaBackflowRow(uploadedFileId: string, row: RawSheetRow) {
     patient_name: parseTextCell(getCell(row, "patient_name")),
     patient_no: parseTextCell(getCell(row, "patient_no")),
     phone_tail: parseTextCell(getCell(row, "phone_tail")),
-    source_platform: parseTextCell(getCell(row, "source_platform")),
+    source_platform: pickTextCell(row, ["source_level_3", "source_level_2", "source_level_1", "source_platform"]),
     source_channel: parseTextCell(getCell(row, "source_channel")),
     intention_project: parseTextCell(getCell(row, "intention_project")),
     visit_project: parseTextCell(getCell(row, "visit_project")),
@@ -249,7 +268,7 @@ function mapEkanyaBackflowRow(uploadedFileId: string, row: RawSheetRow) {
     appointment_status: parseTextCell(getCell(row, "appointment_status")),
     visit_status: parseTextCell(getCell(row, "visit_status")),
     deal_status: parseTextCell(getCell(row, "deal_status")),
-    paid_amount: parseNumberCell(getCell(row, "paid_amount")),
+    paid_amount: paidAmount,
     receivable_amount: parseNumberCell(getCell(row, "receivable_amount")),
     discount_amount: parseNumberCell(getCell(row, "discount_amount")),
     doctor_name: parseTextCell(getCell(row, "doctor_name")),
@@ -262,13 +281,49 @@ function mapEkanyaBackflowRow(uploadedFileId: string, row: RawSheetRow) {
 function hasEkanyaKeyField(headers: string[]) {
   return headers.some((header) => {
     const mappedField = headerMap[normalizeHeader(header)];
-    return ["source_platform", "visit_status", "deal_status", "paid_amount"].includes(mappedField);
+    return ["source_platform", "source_level_1", "source_level_2", "source_level_3", "visit_status", "deal_status", "paid_amount", "cash_paid_amount", "platform_settlement", "deal_project"].includes(mappedField);
   });
 }
 
 function getCell(row: RawSheetRow, mappedField: string) {
   const matchedEntry = Object.entries(row).find(([header]) => headerMap[normalizeHeader(header)] === mappedField);
   return matchedEntry?.[1] ?? null;
+}
+
+function pickTextCell(row: RawSheetRow, mappedFields: string[]) {
+  for (const field of mappedFields) {
+    const text = parseTextCell(getCell(row, field));
+    if (text) return text;
+  }
+
+  return null;
+}
+
+function isValidEkanyaRow(row: RawSheetRow) {
+  const patientNo = parseTextCell(getCell(row, "patient_no"));
+  const project = parseTextCell(getCell(row, "deal_project")) ?? parseTextCell(getCell(row, "visit_project")) ?? parseTextCell(getCell(row, "intention_project"));
+  const date = parseDateCell(getCell(row, "deal_date")) ?? parseDateCell(getCell(row, "source_date")) ?? parseDateCell(getCell(row, "visit_date"));
+  const paid = parseNumberCell(getCell(row, "paid_amount")) ?? sumNullable(parseNumberCell(getCell(row, "cash_paid_amount")), parseNumberCell(getCell(row, "platform_settlement")));
+  const rawText = Object.values(row).map((value) => String(value ?? "")).join("");
+
+  if (!rawText.trim()) return false;
+  if (/合计|总计|小计|统计/.test(rawText) && !patientNo && !project) return false;
+  if (!patientNo && !project) return false;
+  return Boolean(date || project || (paid !== null && paid !== 0));
+}
+
+function sumNullable(...values: Array<number | null>) {
+  const validValues = values.filter((value): value is number => value !== null);
+  if (validValues.length === 0) return null;
+  return validValues.reduce((total, value) => total + value, 0);
+}
+
+function getDateRange(values: Array<string | null>) {
+  const dates = values.filter((value): value is string => Boolean(value)).sort();
+  return {
+    start: dates[0] ?? null,
+    end: dates.at(-1) ?? null,
+  };
 }
 
 function normalizeHeader(header: string) {

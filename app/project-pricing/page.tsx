@@ -60,6 +60,15 @@ const statusOptions = [
   { value: "inactive", label: "停用" },
 ];
 
+const attributeOptions = [
+  { value: "all", label: "全部属性" },
+  { value: "lead", label: "引流项目" },
+  { value: "highTicket", label: "高客单项目" },
+  { value: "normal", label: "普通项目" },
+];
+
+const pageSizeOptions = [25, 50, 100];
+
 export default function ProjectPricingPage() {
   const [items, setItems] = useState<ProjectPriceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +79,9 @@ export default function ProjectPricingPage() {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("all");
   const [category, setCategory] = useState("all");
+  const [attribute, setAttribute] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProjectPriceForm>(emptyForm);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -77,6 +89,30 @@ export default function ProjectPricingPage() {
   const categories = useMemo(() => {
     return Array.from(new Set(items.map((item) => item.project_category).filter(Boolean))) as string[];
   }, [items]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (attribute === "lead") return Boolean(item.is_lead_project);
+      if (attribute === "highTicket") return Boolean(item.is_high_ticket);
+      if (attribute === "normal") return !item.is_lead_project && !item.is_high_ticket;
+      return true;
+    });
+  }, [items, attribute]);
+
+  const priceStats = useMemo(() => {
+    const prices = filteredItems.map((item) => item.ekanya_system_price).filter((value): value is number => value !== null && value !== undefined);
+    return {
+      total: filteredItems.length,
+      priced: prices.filter((value) => value > 0).length,
+      missing: filteredItems.filter((item) => item.ekanya_system_price === null || item.ekanya_system_price === undefined).length,
+      zero: prices.filter((value) => value === 0).length,
+      high: prices.filter((value) => value >= 50000).length,
+    };
+  }, [filteredItems]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pagedItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   useEffect(() => {
     loadItems();
@@ -96,6 +132,7 @@ export default function ProjectPricingPage() {
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.message ?? "读取项目价格失败，请稍后再试。");
       setItems(payload.items ?? []);
+      setPage(1);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "读取项目价格失败，请稍后再试。");
     } finally {
@@ -327,8 +364,16 @@ export default function ProjectPricingPage() {
         </div>
       </section>
 
+      <section className="mb-6 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="当前项目数" value={formatInteger(priceStats.total)} />
+        <StatCard label="有价格" value={formatInteger(priceStats.priced)} />
+        <StatCard label="缺价格" value={formatInteger(priceStats.missing)} />
+        <StatCard label="价格为 0" value={formatInteger(priceStats.zero)} />
+        <StatCard label="异常高价" value={formatInteger(priceStats.high)} />
+      </section>
+
       <section className="mb-6 rounded-md border border-slate-200 bg-white p-4">
-        <div className="grid gap-3 lg:grid-cols-[1fr_180px_160px_auto]">
+        <div className="grid gap-3 xl:grid-cols-[1fr_180px_160px_160px_150px_auto]">
           <label className="text-sm font-semibold text-slate-700">
             搜索项目名称
             <input
@@ -346,7 +391,10 @@ export default function ProjectPricingPage() {
             <select
               className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal text-slate-700"
               value={category}
-              onChange={(event) => setCategory(event.target.value)}
+              onChange={(event) => {
+                setPage(1);
+                setCategory(event.target.value);
+              }}
             >
               <option value="all">全部分类</option>
               {categories.map((item) => (
@@ -361,11 +409,48 @@ export default function ProjectPricingPage() {
             <select
               className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal text-slate-700"
               value={status}
-              onChange={(event) => setStatus(event.target.value)}
+              onChange={(event) => {
+                setPage(1);
+                setStatus(event.target.value);
+              }}
             >
               {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm font-semibold text-slate-700">
+            项目属性
+            <select
+              className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal text-slate-700"
+              value={attribute}
+              onChange={(event) => {
+                setPage(1);
+                setAttribute(event.target.value);
+              }}
+            >
+              {attributeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm font-semibold text-slate-700">
+            每页条数
+            <select
+              className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal text-slate-700"
+              value={pageSize}
+              onChange={(event) => {
+                setPage(1);
+                setPageSize(Number(event.target.value));
+              }}
+            >
+              {pageSizeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option} 条
                 </option>
               ))}
             </select>
@@ -407,9 +492,33 @@ export default function ProjectPricingPage() {
         onSave={saveProject}
       />
 
-      <section className="overflow-x-auto rounded-md border border-slate-200 bg-white">
-        <table className="w-full min-w-[1650px] border-collapse text-sm">
-          <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-600">
+      <section className="rounded-md border border-slate-200 bg-white">
+        <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+          <p>
+            当前筛选后共 {formatInteger(filteredItems.length)} 条，正在显示第 {formatInteger(currentPage)} / {formatInteger(pageCount)} 页。
+          </p>
+          <div className="flex gap-2">
+            <button
+              className="rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              上一页
+            </button>
+            <button
+              className="rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              disabled={currentPage >= pageCount}
+              onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+        <div className="max-h-[560px] overflow-auto">
+          <table className="w-full min-w-[1650px] border-collapse text-sm">
+          <thead className="sticky top-0 bg-slate-100 text-left text-xs font-semibold text-slate-600">
             <tr>
               {["项目名称", "项目分类", "e看牙系统价", "平台展示价", "活动价", "常见成交价", "套餐包含内容", "引流", "高客单", "观察周期", "备注", "状态", "操作"].map((header) => (
                 <th key={header} className="px-4 py-3">
@@ -426,14 +535,14 @@ export default function ProjectPricingPage() {
                 </td>
               </tr>
             ) : null}
-            {!loading && items.length === 0 ? (
+            {!loading && filteredItems.length === 0 ? (
               <tr>
                 <td className="px-4 py-6 text-slate-600" colSpan={13}>
-                  还没有项目价格记录。可以先导入 e看牙项目价格表，也可以手动新增项目。
+                  当前筛选条件下没有项目价格记录。可以调整项目名称、分类、属性或状态。
                 </td>
               </tr>
             ) : null}
-            {items.map((item) => {
+            {pagedItems.map((item) => {
               const itemStatus = normalizeStatus(item.status);
               return (
                 <tr key={item.id} className={itemStatus === "inactive" ? "bg-slate-50 text-slate-500" : undefined}>
@@ -471,6 +580,7 @@ export default function ProjectPricingPage() {
             })}
           </tbody>
         </table>
+        </div>
       </section>
     </AppShell>
   );
@@ -593,6 +703,15 @@ function InfoBlock({ title, text }: { title: string; text: string }) {
   );
 }
 
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <article className="rounded-md border border-slate-200 bg-white p-4">
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-slate-950">{value}</p>
+    </article>
+  );
+}
+
 function stringifyNumber(value: number | null) {
   return value === null || value === undefined ? "" : String(value);
 }
@@ -603,4 +722,8 @@ function normalizeStatus(value: string | null): "active" | "inactive" {
 
 function formatNullableCurrency(value: number | null) {
   return value === null || value === undefined ? "待补充" : formatCurrency(value);
+}
+
+function formatInteger(value: number) {
+  return new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 0 }).format(value);
 }

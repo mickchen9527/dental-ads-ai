@@ -87,6 +87,7 @@ export async function POST(request: Request) {
     }
 
     const mappedRows = rows.map((row) => mapMeituanSummaryRow(id, row));
+    const periodRange = getDateRange(mappedRows.map((row) => row.date));
     const deleteResult = await supabase.from("meituan_summary_rows").delete().eq("uploaded_file_id", id);
 
     if (deleteResult.error) {
@@ -120,6 +121,8 @@ export async function POST(request: Request) {
       .update({
         parse_status: "parsed",
         row_count: mappedRows.length,
+        period_start: periodRange.start,
+        period_end: periodRange.end,
       })
       .eq("id", id);
 
@@ -253,8 +256,22 @@ function parseDateCell(value: CellValue) {
     return `${separatedMatch[1]}-${separatedMatch[2].padStart(2, "0")}-${separatedMatch[3].padStart(2, "0")}`;
   }
 
+  const monthDayMatch = text.match(/^(\d{1,2})[-/.月](\d{1,2})(?:日)?$/);
+  if (monthDayMatch) {
+    const year = new Date().getFullYear();
+    return `${year}-${monthDayMatch[1].padStart(2, "0")}-${monthDayMatch[2].padStart(2, "0")}`;
+  }
+
   const parsedDate = new Date(text);
   return Number.isNaN(parsedDate.getTime()) ? null : formatDate(parsedDate);
+}
+
+function getDateRange(values: Array<string | null>) {
+  const dates = values.filter((value): value is string => Boolean(value)).sort();
+  return {
+    start: dates[0] ?? null,
+    end: dates.at(-1) ?? null,
+  };
 }
 
 function formatDate(date: Date) {

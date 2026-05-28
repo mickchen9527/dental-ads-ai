@@ -152,6 +152,82 @@ const topActions = [
 ];
 
 export default function DashboardPage() {
+  if (useProductionDashboard()) {
+    const officialQuickLinks = [
+      { href: "/upload", title: "数据上传", description: "上传并解析各平台和 e看牙数据。" },
+      { href: "/data-quality", title: "数据质量检测", description: "先确认上传文件和解析明细能不能用于分析。" },
+      { href: "/recommendations", title: "今日总建议", description: "查看基于真实解析数据生成的规则型建议和 AI 辅助总结。" },
+      { href: "/action-logs", title: "操作记录与复盘", description: "记录采纳、执行和复盘结果，避免建议只看不做。" },
+      { href: "/platform-analysis", title: "多平台统一看板", description: "查看美团、抖音、腾讯广点通、高德的前端投放表现。" },
+      { href: "/roi-analysis", title: "闭环 ROI 分析", description: "把平台投放数据和 e看牙回流放在一起做初步闭环参考。" },
+      { href: "/reports", title: "多平台周报", description: "生成周会可用的投放、到院、成交和项目表现摘要。" },
+      { href: "/competitor-intelligence", title: "竞品价格库", description: "管理人工整理或导入的公开竞品价格。" },
+      { href: "/project-pricing", title: "项目价格管理", description: "维护 e看牙项目价格、项目属性和项目状态。" },
+      { href: "/targets", title: "目标值设置", description: "维护系统判断投放数据时使用的参考线。" },
+    ];
+
+    return (
+      <AppShell activeHref="/dashboard">
+        <PageHeader
+          eyebrow="首页"
+          title="首页驾驶舱"
+          description="当前首页只做入口和流程提醒，不展示固定业绩数字。真实花费、咨询、成交和 ROI 请以数据质量检测、今日总建议、多平台看板和闭环 ROI 分析为准。"
+          action={
+            <PageHelpButton
+              purpose="每天先从这里进入正式工作流，避免把示例说明当成真实投放结果。"
+              when="每天上传数据前后、看建议前、开会前都可以从这里进入。"
+              focus={["数据上传", "数据质量", "今日建议", "操作复盘", "多平台看板"]}
+              next="先上传并解析数据，再看数据质量，最后看今日建议和操作记录。"
+              mistakes={["不要把首页当作真实业绩报表。", "没有解析数据时不要下强结论。", "闭环 ROI 只是初步参考，不是精准归因。"]}
+            />
+          }
+        />
+
+        <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          <p className="font-semibold">上线收口提示</p>
+          <p>
+            旧版首页里的固定示例消耗、咨询、成交和 ROI 已不再作为真实结果展示。没有真实数据时，请先到数据上传页上传并解析文件。
+          </p>
+        </section>
+
+        <section className="mb-6 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <article className="rounded-md border border-slate-200 bg-white p-4">
+            <h3 className="text-base font-semibold text-slate-950">今日使用顺序</h3>
+            <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
+              <li>到数据上传页上传并解析平台数据和 e看牙回流数据。</li>
+              <li>到数据质量检测页确认文件和明细字段是否可用。</li>
+              <li>到目标值设置页确认当前判断参考线。</li>
+              <li>到今日总建议页查看规则型建议和 AI 辅助总结。</li>
+              <li>采纳或继续观察后，到操作记录里做执行复盘。</li>
+            </ol>
+          </article>
+          <article className="rounded-md border border-cyan-200 bg-cyan-50 p-4 text-sm leading-6 text-cyan-950">
+            <h3 className="text-base font-semibold">真实分析入口</h3>
+            <p className="mt-2">
+              首页不再展示固定模拟业绩。正式判断请看“数据质量检测”“今日总建议”“多平台统一看板”“闭环 ROI 分析”和“多平台周报”。
+            </p>
+            <p className="mt-2">
+              如果某个平台暂无 active + parsed 数据，系统会提示暂无可分析数据，不会硬生成真实结论。
+            </p>
+          </article>
+        </section>
+
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {officialQuickLinks.map((link) => (
+            <Link
+              key={link.href}
+              className="rounded-md border border-slate-200 bg-white p-4 transition hover:border-cyan-200 hover:bg-cyan-50"
+              href={link.href}
+            >
+              <h3 className="text-sm font-semibold text-slate-950">{link.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{link.description}</p>
+            </Link>
+          ))}
+        </section>
+      </AppShell>
+    );
+  }
+
   const metrics = summarizeRows(standardRows);
 
   return (
@@ -293,4 +369,8 @@ function QuickLink({ href, title, description }: { href: string; title: string; 
       <p className="mt-1 text-xs leading-5 text-slate-600">{description}</p>
     </Link>
   );
+}
+
+function useProductionDashboard() {
+  return true;
 }

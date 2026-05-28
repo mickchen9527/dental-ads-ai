@@ -39,14 +39,7 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
   const reportCsv = [
     ["统计周期", data.period],
     ["平台名称", data.name],
-    ["本周广告费", data.weekSpend],
-    ["来源客户数", data.customers.length.toString()],
-    ["到院数", data.customers.filter((item) => item.arrival === "是").length.toString()],
-    ["成交数", data.customers.filter((item) => item.deal === "是").length.toString()],
-    ["实收金额", data.projectStats[0]?.paidAmount ?? "¥0.00"],
-    ["本周主要问题", data.suggestions[0]?.problem ?? "暂无"],
-    ["下周建议动作", data.suggestions[0]?.now ?? "继续观察"],
-    ["会议备注区", ""],
+    ["说明", "本平台单页不导出固定示例结果，真实周报请到多平台周报页面下载。"],
   ]
     .map((row) => row.join(","))
     .join("\n");
@@ -70,6 +63,14 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
 
       <TemporaryWorkflowNotice kind="platform" />
 
+      <section className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+        <p className="font-semibold">平台单页说明</p>
+        <p>
+          本页用于平台数据查看和辅助排查。正式判断请以已上传并解析后的多平台看板、数据质量检测和今日总建议为准。
+          如果页面出现示例说明或参考字段，不参与真实分析。
+        </p>
+      </section>
+
       <section className="mb-6 rounded-md border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
@@ -89,17 +90,17 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
       </section>
 
       <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="今日广告费" value={data.todaySpend} helper="今天该平台花了多少钱" tone={data.hasLatestData ? "cyan" : "amber"} />
-        <MetricCard label="本周广告费" value={data.weekSpend} helper="本周该平台花了多少钱" />
-        <MetricCard label="数据周期" value={data.period} helper="看数据时先确认时间范围" />
-        <MetricCard label="数据状态" value={data.hasLatestData ? "可查看" : "等待上传"} helper={data.hasLatestData ? "已有示例上传记录" : "请先上传该平台数据"} tone="amber" />
+        <MetricCard label="今日广告费" value="请看多平台看板" helper="本页不展示固定示例数字" tone="amber" />
+        <MetricCard label="本周广告费" value="请看多平台周报" helper="真实汇总以已解析数据为准" />
+        <MetricCard label="数据周期" value="请看上传记录" helper="上传时间和数据周期在数据上传页管理" />
+        <MetricCard label="数据状态" value="辅助排查页" helper="正式判断以数据质量检测和今日总建议为准" tone="amber" />
       </section>
 
       <TableSection
         title={data.frontDataTitle}
-        description="这是平台后台能导出的前端数据。前端数据只能说明有没有人点、问、留资，不能直接说明有没有成交。"
+        description="这是平台后台能导出的前端数据字段说明。真实数值请以多平台统一看板和已解析上传记录为准。"
         headers={["字段", "数值", "大白话说明"]}
-        rows={data.frontData}
+        rows={[]}
       />
 
       <div className="mt-6">
@@ -126,21 +127,10 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
 
       <TableSection
         title="项目分类统计"
-        description="这里看本周期该平台客户分别来自哪些项目。高客单项目要看更长周期，不要只看当天。"
+        description="这里原来只做示例说明。正式项目表现请以项目分析、多平台闭环和 e看牙回流数据为准。"
         headers={projectHeaders}
         maxHeightClassName="max-h-[420px]"
-        rows={data.projectStats.map((item) => [
-          item.project,
-          item.leads,
-          item.appointments,
-          item.arrivals,
-          item.deals,
-          item.paidAmount,
-          data.name.replace("分析", ""),
-          getProjectRoi(item.project),
-          item.cycle,
-          item.judgement,
-        ])}
+        rows={[]}
       />
 
       <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
@@ -171,75 +161,22 @@ export function PlatformWorkbench({ data }: PlatformWorkbenchProps) {
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-2">
-        {data.suggestions.map((item) => (
-          <article key={item.problem} className="rounded-md border border-slate-200 bg-white p-4">
-            <h3 className="text-base font-semibold text-slate-950">本平台优化建议</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              这里不是全站总建议，只看当前平台的数据，告诉你这个平台现在该怎么处理。
-            </p>
-            <dl className="mt-4 space-y-4">
-              <Field label="问题是什么" value={item.problem} />
-              <Field label="为什么这么判断" value={item.reason} />
-              <Field label="现在该做什么" value={item.now} />
-              <ListField label="具体怎么做" items={item.steps} />
-              <ListField label="不要做什么" items={item.avoid} />
-              <Field label="观察几天" value={item.observe} />
-              <ListField label="几天后看什么" items={item.review} />
-            </dl>
-          </article>
-        ))}
+      <section className="mt-6 rounded-md border border-slate-200 bg-white p-4">
+        <h3 className="text-base font-semibold text-slate-950">本平台优化建议</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          这里不再展示固定示例建议。真实建议请到“今日总建议”查看，系统会基于已上传、已解析且启用的数据生成规则型建议。
+        </p>
+        <a className="mt-4 inline-flex rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-800" href="/recommendations">
+          去今日总建议
+        </a>
       </section>
     </AppShell>
   );
 }
 
 function buildSourceCustomerRows(data: PlatformWorkbenchData) {
-  const baseRows = data.customers.map((item) => [
-    item.date,
-    item.sourceType,
-    item.intendedProject,
-    item.arrivalProject,
-    item.dealProject,
-    item.status,
-    item.paidAmount,
-    item.note,
-  ]);
-
-  const fallbackRows = [
-    ["2026-05-17", data.sourceTypes[0] ?? data.name.replace("分析", ""), "补牙", "补牙", "补牙", "已成交", "¥520.00", "刚需客户，当天处理。"],
-    ["2026-05-16", data.sourceTypes[1] ?? data.name.replace("分析", ""), "正畸", "-", "-", "已预约", "¥0.00", "家长需要周末到院。"],
-    ["2026-05-15", data.sourceTypes[0] ?? data.name.replace("分析", ""), "儿牙", "涂氟", "涂氟", "已成交", "¥268.00", "家长关注是否疼痛。"],
-    ["2026-05-14", data.sourceTypes[2] ?? data.sourceTypes[0] ?? data.name.replace("分析", ""), "种植", "种植检查", "-", "待追踪", "¥0.00", "高客单项目继续观察。"],
-    ["2026-05-13", data.sourceTypes[0] ?? data.name.replace("分析", ""), "洁牙", "洁牙", "洁牙", "已成交", "¥198.00", "后续可追踪补牙和牙周。"],
-  ];
-
-  return [...baseRows, ...fallbackRows].slice(0, Math.max(5, baseRows.length));
-}
-
-function getProjectRoi(project: string) {
-  const roiByProject: Record<string, string> = {
-    洁牙: "2.1",
-    补牙: "2.4",
-    拔牙: "1.8",
-    智齿: "1.9",
-    根管: "2.0",
-    儿牙: "1.7",
-    窝沟封闭: "1.5",
-    涂氟: "1.6",
-    正畸: "1.2",
-    儿童早矫: "1.1",
-    种植: "1.4",
-    "半口/全口": "0.8",
-    修复: "1.9",
-    牙周: "1.6",
-    美白: "2.3",
-    贴面: "1.3",
-    检查: "0.9",
-    其他: "1.0",
-  };
-
-  return roiByProject[project] ?? "示例 1.0";
+  void data;
+  return [];
 }
 
 function SmallMetric({ label, value }: { label: string; value: string }) {
@@ -278,6 +215,13 @@ function TableSection({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
+            {rows.length === 0 ? (
+              <tr>
+                <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={headers.length}>
+                  暂无真实数据。请先到数据上传页上传并解析对应平台文件。
+                </td>
+              </tr>
+            ) : null}
             {rows.map((row) => (
               <tr key={row.join("-")}>
                 {row.map((cell, index) => (
@@ -289,29 +233,5 @@ function TableSection({
         </table>
       </div>
     </section>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm leading-6 text-slate-700">{value}</dd>
-    </div>
-  );
-}
-
-function ListField({ label, items }: { label: string; items: string[] }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold text-slate-500">{label}</dt>
-      <dd className="mt-1">
-        <ol className="list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-700">
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
-      </dd>
-    </div>
   );
 }

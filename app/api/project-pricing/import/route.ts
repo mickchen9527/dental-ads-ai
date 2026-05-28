@@ -29,6 +29,7 @@ const headerAliases: Array<[string, keyof ProjectPriceInsert]> = [
   ["e看牙系统价", "ekanya_system_price"],
   ["系统价", "ekanya_system_price"],
   ["原价", "ekanya_system_price"],
+  ["标准价", "ekanya_system_price"],
   ["平台展示价", "platform_display_price"],
   ["展示价", "platform_display_price"],
   ["活动价", "campaign_price"],
